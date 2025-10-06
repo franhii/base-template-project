@@ -1,0 +1,42 @@
+# -----------------
+# Archivos globales
+# -----------------
+
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+
+
+# Backend
+backend/.gradle/
+backend/build/
+backend/env.local
+backend/.env
+backend/src/main/resources/application-*.yml
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+
+
+# Cache IntelliJ
+backend/.idea/
+backend/*.iml
+
+
+# -----------------
+# Root
+# -----------------
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
