@@ -5,15 +5,17 @@ import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
-@Table(name = "users")
 @Data
 @Entity
-public class User {
+@Table(name = "items")
+@Inheritance(strategy = InheritanceType.JOINED)
+public abstract class Item {
     @Id
-    private String id = UUID.randomUUID().toString();
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenant_id", nullable = false)
@@ -22,17 +24,17 @@ public class User {
     @Column(nullable = false)
     private String name;
 
-    private String phone;
-
-    @Column(unique = true, nullable = false)
-    private String email;
+    @Column(length = 1000)
+    private String description;
 
     @Column(nullable = false)
-    private String password;
+    private BigDecimal price;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Role role = Role.CLIENTE;
+    private String category;
+
+    private String imageUrl;
+
+    private boolean active = true;
 
     @CreationTimestamp
     @Column(updatable = false)

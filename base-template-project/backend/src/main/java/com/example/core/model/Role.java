@@ -1,7 +1,7 @@
 package com.example.core.model;
 
 public enum Role {
-    ADMIN,
+    CLIENTE,
     VENDEDOR,
-    CLIENTE
+    ADMIN
 }
