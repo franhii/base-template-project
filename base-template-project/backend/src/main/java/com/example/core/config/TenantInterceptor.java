@@ -22,23 +22,25 @@ public class TenantInterceptor implements HandlerInterceptor {
                              HttpServletResponse response,
                              Object handler) {
 
-        // Opción 1: Desde subdomain
         String subdomain = extractSubdomain(request);
+        System.out.println("🔍 TenantInterceptor - Subdomain extraído: " + subdomain);
 
-        // Opción 2: Desde header (para testing)
         if (subdomain == null || subdomain.equals("localhost")) {
             subdomain = request.getHeader("X-Tenant-Subdomain");
+            System.out.println("🔍 TenantInterceptor - Header X-Tenant-Subdomain: " + subdomain);
         }
 
-        // Por defecto usar "default"
         if (subdomain == null) {
             subdomain = "default";
         }
 
-        // Buscar tenant y guardar en contexto
+        System.out.println("🔍 TenantInterceptor - Subdomain final: " + subdomain);
+
         Tenant tenant = tenantRepository.findBySubdomain(subdomain)
                 .orElse(tenantRepository.findBySubdomain("default")
                         .orElseThrow(() -> new RuntimeException("No tenant found")));
+
+        System.out.println("🏢 TenantInterceptor - Tenant encontrado: " + tenant.getBusinessName() + " (ID: " + tenant.getId() + ")");
 
         TenantContext.setCurrentTenant(tenant.getId());
 

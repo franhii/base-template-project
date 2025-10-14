@@ -23,6 +23,7 @@ public class DataSeeder {
                                    TenantRepository tenantRepository,
                                    PasswordEncoder passwordEncoder) {
         return args -> {
+            // Crear tenant por defecto
             Tenant defaultTenant = tenantRepository.findBySubdomain("default")
                     .orElseGet(() -> {
                         Tenant t = new Tenant();
@@ -35,7 +36,6 @@ public class DataSeeder {
                         config.setSecondaryColor("#8B5CF6");
                         config.setCategories(List.of("General", "Electrónica", "Ropa"));
 
-                        // Features tipadas
                         TenantConfig.Features features = new TenantConfig.Features();
                         features.setProducts(true);
                         features.setServices(true);
@@ -48,10 +48,21 @@ public class DataSeeder {
                         config.setFeatures(features);
                         t.setConfig(config);
 
+                        System.out.println("✅ Default tenant created");
                         return tenantRepository.save(t);
                     });
 
-            // ... resto del código
+            // Crear admin si no existe
+            if (userRepository.findByEmail("admin@admin.com").isEmpty()) {
+                User admin = new User();
+                admin.setName("Admin");
+                admin.setEmail("admin@admin.com");
+                admin.setPassword(passwordEncoder.encode("admin123"));
+                admin.setRole(Role.ADMIN);
+                admin.setTenant(defaultTenant);
+                userRepository.save(admin);
+                System.out.println("✅ Admin user created: admin@admin.com / admin123");
+            }
         };
     }
 }
