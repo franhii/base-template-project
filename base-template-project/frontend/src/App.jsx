@@ -33,7 +33,13 @@ export default function App() {
             <h1>{config.businessName}</h1>
 
             {/* Mostrar features según configuración */}
-            {config.features.delivery && <DeliverySection />}
+            // Después (más limpio y seguro)
+            {config.features.delivery && (
+                <DeliverySection
+                    cost={config.features.deliveryConfig?.deliveryCost}
+                    freeFrom={config.features.deliveryConfig?.freeDeliveryThreshold}
+                />
+            )}
             {config.features.booking && <BookingSection />}
 
             {/* Resto de la app */}

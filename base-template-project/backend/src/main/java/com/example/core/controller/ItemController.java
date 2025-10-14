@@ -5,8 +5,10 @@ import com.example.core.dto.ServiceDTO;
 import com.example.core.mapper.ItemMapper;
 import com.example.core.model.Product;
 import com.example.core.model.ServiceItem;
+import com.example.core.model.Tenant;
 import com.example.core.repository.ProductRepository;
 import com.example.core.repository.ServiceRepository;
+import com.example.core.repository.TenantRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -20,19 +22,21 @@ public class ItemController {
 
     private final ProductRepository productRepository;
     private final ServiceRepository serviceRepository;
-    private final ItemMapper itemMapper; // ← Agregar
+    private final ItemMapper itemMapper;
+    private final TenantRepository tenantRepository; // ← AGREGAR
 
     public ItemController(ProductRepository productRepository,
                           ServiceRepository serviceRepository,
-                          ItemMapper itemMapper) {
+                          ItemMapper itemMapper,
+                          TenantRepository tenantRepository) { // ← AGREGAR
         this.productRepository = productRepository;
         this.serviceRepository = serviceRepository;
         this.itemMapper = itemMapper;
+        this.tenantRepository = tenantRepository; // ← AGREGAR
     }
 
     // ========== PRODUCTOS ==========
 
-    //Obtenemos el producto por ID.
     @GetMapping("/products/{id}")
     public ResponseEntity<ProductDTO> getProduct(@PathVariable String id) {
         return productRepository.findById(id)
@@ -40,30 +44,31 @@ public class ItemController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    //Obtenemos todos los productos.
     @GetMapping("/products")
     public ResponseEntity<List<ProductDTO>> getAllProducts() {
         List<Product> products = productRepository.findByActiveTrue();
         List<ProductDTO> dtos = products.stream()
-                .map(itemMapper::toProductDTO) // ← Usar mapper
+                .map(itemMapper::toProductDTO)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
 
-
-    //Creamos un producto.
     @PostMapping("/products")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')") // ← CORREGIDO
     public ResponseEntity<ProductDTO> createProduct(@RequestBody ProductDTO dto) {
-        Product product = itemMapper.fromProductDTO(dto); // ← Usar mapper
+        // Obtener tenant por defecto
+        Tenant defaultTenant = tenantRepository.findBySubdomain("default")
+                .orElseThrow(() -> new RuntimeException("Default tenant not found"));
+
+        Product product = itemMapper.fromProductDTO(dto);
+        product.setTenant(defaultTenant); // ← IMPORTANTE: asignar tenant
         product = productRepository.save(product);
-        return ResponseEntity.ok(itemMapper.toProductDTO(product)); // ← Usar mapper
+        return ResponseEntity.ok(itemMapper.toProductDTO(product));
     }
 
     // ========== SERVICIOS ==========
 
     @GetMapping("/services")
-    //Obtenemos todos los servicios.
     public ResponseEntity<List<ServiceDTO>> getAllServices() {
         List<ServiceItem> services = serviceRepository.findByActiveTrue();
         List<ServiceDTO> dtos = services.stream()
@@ -72,7 +77,6 @@ public class ItemController {
         return ResponseEntity.ok(dtos);
     }
 
-    //Obtener servicio por id
     @GetMapping("/services/{id}")
     public ResponseEntity<ServiceDTO> getService(@PathVariable String id) {
         return serviceRepository.findById(id)
@@ -80,11 +84,15 @@ public class ItemController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    //Creamos un servicio para ofrecer.
     @PostMapping("/services")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')") // ← CORREGIDO
     public ResponseEntity<ServiceDTO> createService(@RequestBody ServiceDTO dto) {
+        // Obtener tenant por defecto
+        Tenant defaultTenant = tenantRepository.findBySubdomain("default")
+                .orElseThrow(() -> new RuntimeException("Default tenant not found"));
+
         ServiceItem service = itemMapper.fromServiceDTO(dto);
+        service.setTenant(defaultTenant); // ← IMPORTANTE: asignar tenant
         service = serviceRepository.save(service);
         return ResponseEntity.ok(itemMapper.toServiceDTO(service));
     }

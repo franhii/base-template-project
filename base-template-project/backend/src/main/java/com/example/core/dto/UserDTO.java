@@ -10,4 +10,6 @@ public class UserDTO {
     private String email;
     private String phone;
     private Role role;
+    private String tenantId; // ← subdominio
+    private String tenantName; // ← nombre del negocio
 }

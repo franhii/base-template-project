@@ -6,7 +6,9 @@ import com.example.core.dto.RegisterRequest;
 import com.example.core.dto.UserDTO;
 import com.example.core.mapper.UserMapper;
 import com.example.core.model.Role;
+import com.example.core.model.Tenant;
 import com.example.core.model.User;
+import com.example.core.repository.TenantRepository;
 import com.example.core.repository.UserRepository;
 import com.example.core.security.JwtUtil;
 import jakarta.validation.Valid;
@@ -30,31 +32,39 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final UserMapper userMapper;
+    private final TenantRepository tenantRepository;
+
 
     public AuthController(UserRepository userRepository,
                           PasswordEncoder passwordEncoder,
                           AuthenticationManager authenticationManager,
                           JwtUtil jwtUtil,
-                          UserMapper userMapper) {
+                          UserMapper userMapper,
+                        TenantRepository tenantRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.userMapper = userMapper;
+        this.tenantRepository = tenantRepository;
+
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req) {
-        // Validar si ya existe el email
         if (userRepository.findByEmail(req.getEmail()).isPresent()) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "Email already registered"));
         }
 
-        // Crear usuario
+        // Obtener tenant por defecto (o el que corresponda)
+        Tenant defaultTenant = tenantRepository.findBySubdomain("default")
+                .orElseThrow(() -> new RuntimeException("Default tenant not found"));
+
         User user = userMapper.fromRegisterRequest(req);
         user.setPassword(passwordEncoder.encode(req.getPassword()));
-        user.setRole(Role.CLIENTE); // Por defecto todos son clientes
+        user.setRole(Role.CLIENTE);
+        user.setTenant(defaultTenant); // ← IMPORTANTE: asignar tenant
 
         userRepository.save(user);
 
