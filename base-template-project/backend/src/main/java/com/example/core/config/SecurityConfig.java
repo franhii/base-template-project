@@ -52,7 +52,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/items/**").permitAll()
-                        .requestMatchers("/api/config/current").permitAll() // ← AGREGAR
+                        .requestMatchers("/api/config/current").permitAll()
+                        .requestMatchers("/api/payments/webhook/mercadopago").permitAll() // ← AGREGAR
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 )
