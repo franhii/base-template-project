@@ -12,6 +12,9 @@ import com.example.core.util.MercadoPagoWebhookValidator;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,10 +30,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/payments")
 public class PaymentController {
 
+    Logger logger = LoggerFactory.getLogger(PaymentController.class);
     private final PaymentService paymentService;
     private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
@@ -119,33 +124,51 @@ public class PaymentController {
             @RequestHeader(value = "x-request-id", required = false) String requestId,
             @RequestBody String requestBody) {
 
-        try {
-            if (!webhookValidator.isValid(signatureHeader, requestBody)) {
-                System.err.println("⚠️ Webhook inválido de MercadoPago");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
+        logger.info("🔔 Webhook recibido de MercadoPago");
+        logger.info("   Signature Header: {}", signatureHeader);
+        logger.info("   Request Body: {}", requestBody);
 
+        try {
             ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> payload = mapper.readValue(requestBody, new TypeReference<>() {});
             String type = (String) payload.get("type");
+
+            logger.info("   Tipo de evento: {}", type);
 
             if ("payment".equals(type)) {
                 Map<String, Object> dataMap = (Map<String, Object>) payload.get("data");
                 String paymentId = String.valueOf(dataMap.get("id"));
 
-                // 🔹 Nuevo: obtener estado real desde la API
-                String status = paymentService.getMercadoPagoPaymentStatus(paymentId);
+                logger.info("💬 Payment ID recibido de MP: {}", paymentId);
 
-                paymentService.processMercadoPagoWebhook(paymentId, status);
+                // 🔎 Obtener detalles del pago desde Mercado Pago
+                Map<String, Object> paymentData = paymentService.getMercadoPagoPaymentDetails(paymentId);
+                if (paymentData == null) {
+                    logger.warn("⚠️ No se pudieron obtener datos del pago ID={}", paymentId);
+                    return ResponseEntity.ok().build();
+                }
+
+                // Extraer campos de forma segura
+                String status = (String) paymentData.getOrDefault("status", "unknown");
+                String externalRef = (String) paymentData.getOrDefault("external_reference", null);
+
+                logger.info("✅ Datos MP -> status={}, external_reference={}", status, externalRef);
+
+                if (externalRef != null) {
+                    paymentService.processMercadoPagoWebhookExternalRef(externalRef, status);
+                } else {
+                    logger.warn("⚠️ No se encontró external_reference en el pago ID={}", paymentId);
+                }
             }
 
             return ResponseEntity.ok().build();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("❌ Error procesando webhook MP: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().build();
         }
     }
+
 
 
     // Mapper
