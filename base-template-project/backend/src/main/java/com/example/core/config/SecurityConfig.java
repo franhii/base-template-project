@@ -15,6 +15,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -43,20 +49,81 @@ public class SecurityConfig {
         return new ProviderManager(provider);
     }
 
+    // ✅ CONFIGURACIÓN DE CORS
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        // Permitir requests desde el frontend
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:5173",     // Vite dev server
+                "http://localhost:3000",     // Create React App
+                "http://localhost:4200",     // Angular
+                "https://tu-dominio.com"     // Producción (cambiar por tu dominio real)
+        ));
+
+        // Métodos HTTP permitidos
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+        ));
+
+        // Headers permitidos
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With",
+                "Accept",
+                "Origin",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers"
+        ));
+
+        // Headers expuestos al cliente
+        configuration.setExposedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Disposition"
+        ));
+
+        // Permitir credenciales (cookies, authorization headers)
+        configuration.setAllowCredentials(true);
+
+        // Duración del cache de preflight (1 hora)
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                // ✅ HABILITAR CORS
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
+                // Deshabilitar CSRF (necesario para APIs REST)
                 .csrf(csrf -> csrf.disable())
+
+                // Sesiones stateless (JWT)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                // Configuración de autorización
                 .authorizeHttpRequests(auth -> auth
+                        // Endpoints públicos
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/items/**").permitAll()
                         .requestMatchers("/api/config/current").permitAll()
-                        .requestMatchers("/api/payments/webhook/mercadopago").permitAll() // ← AGREGAR
+                        .requestMatchers("/api/payments/webhook/mercadopago").permitAll()
+
+                        // Swagger UI
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+
+                        // Todos los demás requieren autenticación
                         .anyRequest().authenticated()
                 )
+
+                // Agregar filtro JWT
                 .addFilterBefore(jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class);
 

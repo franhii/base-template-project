@@ -1,0 +1,181 @@
+.admin-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: #f5f7fa;
+}
+
+/* ========== Header ========== */
+.admin-header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.admin-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    max-width: 1800px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.admin-header h1 {
+    margin: 0;
+    color: white;
+    font-size: 1.8em;
+    font-weight: 700;
+}
+
+.tenant-badge {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 600;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    color: white;
+}
+
+.user-name {
+    font-weight: 700;
+    font-size: 1em;
+}
+
+.user-role {
+    font-size: 0.85em;
+    color: #cbd5e1;
+}
+
+.btn-logout {
+    padding: 10px 20px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    font-size: 0.85em;
+    letter-spacing: 0.5px;
+}
+
+.btn-logout:hover {
+    background: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* ========== Main Content ========== */
+.admin-main {
+    flex: 1;
+    padding: 40px 20px;
+    max-width: 1800px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.admin-page-loading,
+.admin-page-error {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-size: 1.2em;
+    background: #f5f7fa;
+}
+
+.admin-page-error {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #7f1d1d;
+}
+
+/* ========== Footer ========== */
+.admin-footer {
+    background: #1e293b;
+    color: #cbd5e1;
+    text-align: center;
+    padding: 20px;
+    margin-top: auto;
+    border-top: 1px solid #334155;
+}
+
+.admin-footer p {
+    margin: 0;
+    font-size: 0.9em;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 1024px) {
+    .admin-header-content {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+
+    .header-left {
+        width: 100%;
+    }
+
+    .header-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .admin-main {
+        padding: 20px 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-header-content {
+        padding: 15px;
+    }
+
+    .admin-header h1 {
+        font-size: 1.4em;
+    }
+
+    .tenant-badge {
+        font-size: 0.8em;
+        padding: 6px 12px;
+    }
+
+    .header-right {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .user-info {
+        font-size: 0.9em;
+    }
+
+    .btn-logout {
+        padding: 8px 16px;
+        font-size: 0.8em;
+    }
+}
