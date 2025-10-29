@@ -59,21 +59,20 @@ export default function Navbar({ user, setUser }) {
 
                     {user ? (
                         <>
-                            <Link to="/cart" className="navbar-link navbar-cart" onClick={() => setMenuOpen(false)}>
+                            <Link to="/cart" className="navbar-link navbar-cart">
                                 🛒 Carrito
                                 {getTotalItems() > 0 && (
                                     <span className="cart-badge">{getTotalItems()}</span>
                                 )}
                             </Link>
 
-                            {/* Admin/Vendedor Link */}
+                            {/* ✅ ESTE BLOQUE DEBE ESTAR */}
                             {(user.role === 'ADMIN' || user.role === 'VENDEDOR') && (
-                                <Link to="/admin" className="navbar-link navbar-admin" onClick={() => setMenuOpen(false)}>
+                                <Link to="/admin" className="navbar-link navbar-admin">
                                     📊 Admin
                                 </Link>
                             )}
 
-                            {/* User Menu */}
                             <div className="navbar-user">
                                 <span className="navbar-username">Hola, {user.name}</span>
                                 <button onClick={handleLogout} className="navbar-logout">

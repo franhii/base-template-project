@@ -58,6 +58,14 @@ export default function AdminPage() {
                         <span className="tenant-badge">{user?.tenantName}</span>
                     </div>
                     <div className="header-right">
+                        {/* ✅ AGREGAR ESTE BOTÓN */}
+                        <button
+                            onClick={() => navigate('/admin/manage-items')}
+                            className="btn-manage-items"
+                        >
+                            📦 Gestionar Items
+                        </button>
+
                         <div className="user-info">
                             <span className="user-name">{user?.name}</span>
                             <span className="user-role">{user?.role}</span>

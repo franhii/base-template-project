@@ -1,15 +1,35 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../store/CartContext';
+import ConfirmModal from '../components/ConfirmModal';
 import './CartPage.css';
 
 export default function CartPage() {
     const navigate = useNavigate();
     const { cart, removeFromCart, updateQuantity, getTotal, clearCart } = useCart();
+    const [confirmClear, setConfirmClear] = useState(false);
 
-    const handleCheckout = () => {
-        navigate('/checkout');
+    const updateQuantityHandler = (itemId, newQuantity) => {
+        if (newQuantity <= 0) {
+            removeFromCart(itemId);
+        } else {
+            updateQuantity(itemId, newQuantity);
+        }
     };
+
+    const handleClearCart = () => {
+        clearCart();
+        setConfirmClear(false);
+    };
+
+    const getTotals = () => {
+        const subtotal = getTotal();
+        const tax = subtotal * 0.21; // IVA 21%
+        const total = subtotal + tax;
+        return { subtotal, tax, total };
+    };
+
+    const { subtotal, tax, total } = getTotals();
 
     if (cart.length === 0) {
         return (
@@ -28,10 +48,20 @@ export default function CartPage() {
 
     return (
         <div className="cart-page">
+            <ConfirmModal
+                isOpen={confirmClear}
+                title="Vaciar Carrito"
+                message="¿Estás seguro de que deseas eliminar todos los items del carrito?"
+                onConfirm={handleClearCart}
+                onCancel={() => setConfirmClear(false)}
+                confirmText="Sí, vaciar"
+                type="danger"
+            />
+
             <div className="cart-container">
                 <div className="cart-header">
                     <h1>Mi Carrito</h1>
-                    <button onClick={clearCart} className="btn-clear">
+                    <button onClick={() => setConfirmClear(true)} className="btn-clear">
                         Vaciar Carrito
                     </button>
                 </div>
@@ -41,18 +71,14 @@ export default function CartPage() {
                     <div className="cart-items">
                         {cart.map(item => (
                             <div key={item.id} className="cart-item">
-                                {/* Image */}
                                 <div className="item-image">
                                     {item.imageUrl ? (
                                         <img src={item.imageUrl} alt={item.name} />
                                     ) : (
-                                        <div className="no-image">
-                                            {item.itemType === 'SERVICE' ? '⚙️' : '📦'}
-                                        </div>
+                                        <div className="no-image">📦</div>
                                     )}
                                 </div>
 
-                                {/* Info */}
                                 <div className="item-info">
                                     <h3>{item.name}</h3>
                                     {item.category && (
@@ -63,24 +89,22 @@ export default function CartPage() {
                                     </p>
                                 </div>
 
-                                {/* Quantity Controls */}
                                 <div className="item-quantity">
                                     <button
-                                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                        onClick={() => updateQuantityHandler(item.id, item.quantity - 1)}
                                         className="btn-qty"
                                     >
                                         -
                                     </button>
                                     <span className="qty-value">{item.quantity}</span>
                                     <button
-                                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                        onClick={() => updateQuantityHandler(item.id, item.quantity + 1)}
                                         className="btn-qty"
                                     >
                                         +
                                     </button>
                                 </div>
 
-                                {/* Subtotal */}
                                 <div className="item-subtotal">
                                     <p className="subtotal-label">Subtotal</p>
                                     <p className="subtotal-value">
@@ -88,7 +112,6 @@ export default function CartPage() {
                                     </p>
                                 </div>
 
-                                {/* Remove Button */}
                                 <button
                                     onClick={() => removeFromCart(item.id)}
                                     className="btn-remove"
@@ -106,26 +129,32 @@ export default function CartPage() {
 
                         <div className="summary-row">
                             <span>Subtotal</span>
-                            <span>${getTotal().toFixed(2)}</span>
+                            <span>${subtotal.toFixed(2)}</span>
                         </div>
 
                         <div className="summary-row">
-                            <span>Envío</span>
-                            <span>A calcular</span>
+                            <span>IVA (21%)</span>
+                            <span>${tax.toFixed(2)}</span>
                         </div>
 
                         <div className="summary-divider"></div>
 
                         <div className="summary-row summary-total">
                             <span>Total</span>
-                            <span>${getTotal().toFixed(2)}</span>
+                            <span>${total.toFixed(2)}</span>
                         </div>
 
-                        <button onClick={handleCheckout} className="btn-checkout">
+                        <button
+                            onClick={() => navigate('/checkout')}
+                            className="btn-checkout"
+                        >
                             Proceder al Pago
                         </button>
 
-                        <button onClick={() => navigate('/')} className="btn-continue-shopping">
+                        <button
+                            onClick={() => navigate('/')}
+                            className="btn-continue-shopping"
+                        >
                             Continuar Comprando
                         </button>
                     </div>

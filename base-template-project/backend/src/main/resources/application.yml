@@ -19,9 +19,9 @@ mercadopago:
   public-key: ${MERCADOPAGO_PUBLIC_KEY:APP_USR-df73fee1-9191-4a9e-94b6-887bb0f9684a}
   webhook-secret: ${MERCADOPAGO_WEBHOOK_SECRET:f5554dacf8117ffca8a1356a2e76d77665651992d2482af0085be13a67bd75b3}
   webhook-url: ${MERCADOPAGO_WEBHOOK_URL:https://jalisa-unsensualistic-unfemininely.ngrok-free.dev/api/payments/webhook/mercadopago}
-  success-url: ${MERCADOPAGO_SUCCESS_URL:https://jalisa-unsensualistic-unfemininely.ngrok-free.dev/api/payments/webhook/success}
-  failure-url: ${MERCADOPAGO_FAILURE_URL:https://jalisa-unsensualistic-unfemininely.ngrok-free.dev/api/payments/webhook/failure}
-  pending-url: ${MERCADOPAGO_PENDING_URL:https://jalisa-unsensualistic-unfemininely.ngrok-free.dev/api/payments/webhook/pending}
+  success-url: ${MERCADOPAGO_SUCCESS_URL:https://jalisa-unsensualistic-unfemininely.ngrok-free.dev/api/payments/success}
+  failure-url: ${MERCADOPAGO_FAILURE_URL:https://jalisa-unsensualistic-unfemininely.ngrok-free.dev/api/payments/failure}
+  pending-url: ${MERCADOPAGO_PENDING_URL:https://jalisa-unsensualistic-unfemininely.ngrok-free.dev/api/payments/pending}
 
 app:
   jwt:

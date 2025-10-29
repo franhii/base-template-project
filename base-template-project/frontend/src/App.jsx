@@ -15,6 +15,9 @@ import CheckoutPage from './pages/CheckoutPage';
 import AdminPage from './pages/AdminPage';
 import ManageItemsPage from './pages/ManageItemsPage';
 import NotFoundPage from './pages/NotFoundPage';
+import SuccessPage from './pages/SuccessPage';
+import FailurePage from './pages/FailurePage';
+import PendingPage from './pages/PendingPage';
 
 import './App.css';
 
@@ -179,6 +182,28 @@ export default function App() {
                                 path="/admin/manage-items"
                                 element={<AdminRoute element={<ManageItemsPage />} />}
                             />
+
+                            {/* 404 */}
+                            <Route path="*" element={<NotFoundPage />} />
+                        </Routes>
+                        <Routes>
+                            {/* Rutas Públicas */}
+                            <Route path="/" element={<HomePage config={config} />} />
+                            <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage setUser={setUser} />} />
+                            <Route path="/register" element={user ? <Navigate to="/" /> : <RegisterPage setUser={setUser} />} />
+
+                            {/* Rutas de Mercado Pago - AGREGAR ESTAS */}
+                            <Route path="/success" element={<SuccessPage />} />
+                            <Route path="/failure" element={<FailurePage />} />
+                            <Route path="/pending" element={<PendingPage />} />
+
+                            {/* Rutas Protegidas - Cliente */}
+                            <Route path="/cart" element={<ProtectedRoute element={<CartPage />} />} />
+                            <Route path="/checkout" element={<ProtectedRoute element={<CheckoutPage />} />} />
+
+                            {/* Rutas Protegidas - Admin/Vendedor */}
+                            <Route path="/admin" element={<AdminRoute element={<AdminPage />} />} />
+                            <Route path="/admin/manage-items" element={<AdminRoute element={<ManageItemsPage />} />} />
 
                             {/* 404 */}
                             <Route path="*" element={<NotFoundPage />} />

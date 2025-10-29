@@ -160,18 +160,39 @@ public class PaymentService {
     // ======================================================
     private Map<String, String> createMercadoPagoPreference(Order order) throws MPException, MPApiException {
         MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
-        List<PreferenceItemRequest> itemsMP = order.getItems().stream()
-                .map(orderItem -> PreferenceItemRequest.builder()
-                        .id(orderItem.getId()) // tu id interno del producto
-                        .title(orderItem.getItemName() + " x " + orderItem.getQuantity()+" $"+orderItem.getItem().getPrice())
-                        .quantity(orderItem.getQuantity())
-                        .unitPrice(orderItem.getPriceAtPurchase()) // precio unitario
-                        .currencyId("ARS")
-                        .pictureUrl(orderItem.getItem().getImageUrl()) // 🔹 agrega esto si tu OrderItem tiene campo de imagen
-                        .description("Cantidad: " + orderItem.getQuantity() + " - Subtotal: $" + orderItem.getOrder().getTotal())
-                        .build())
-                .toList();
 
+        List<PreferenceItemRequest> itemsMP = order.getItems().stream()
+                .map(orderItem -> {
+                    // 🛡️ Protección contra nulls y longitud excesiva
+                    String title = orderItem.getItemName() + " x " + orderItem.getQuantity()
+                            + " $" + orderItem.getItem().getPrice();
+                    if (title.length() > 256) {
+                        title = title.substring(0, 253) + "...";
+                    }
+
+                    String description = "Cantidad: " + orderItem.getQuantity()
+                            + " - Subtotal: $" + orderItem.getOrder().getTotal();
+                    if (description.length() > 256) {
+                        description = description.substring(0, 253) + "...";
+                    }
+
+                    // 🛡️ Validar URL de imagen (opcional, solo si puede ser null)
+                    String imageUrl = null;
+                    if (orderItem.getItem() != null && orderItem.getItem().getImageUrl() != null) {
+                        imageUrl = orderItem.getItem().getImageUrl();
+                    }
+
+                    return PreferenceItemRequest.builder()
+                            .id(orderItem.getId())
+                            .title(title)
+                            .quantity(orderItem.getQuantity())
+                            .unitPrice(orderItem.getPriceAtPurchase())
+                            .currencyId("ARS")
+                            .pictureUrl(imageUrl)
+                            .description(description)
+                            .build();
+                })
+                .toList();
 
         PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
                 .success(successUrl)

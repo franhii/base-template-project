@@ -114,7 +114,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/items/**").permitAll()
                         .requestMatchers("/api/config/current").permitAll()
-                        .requestMatchers("/api/payments/webhook/mercadopago").permitAll()
+                        .requestMatchers("/api/payments/**").permitAll()
 
                         // Swagger UI
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
