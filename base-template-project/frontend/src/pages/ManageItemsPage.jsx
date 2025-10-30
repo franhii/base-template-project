@@ -3,12 +3,29 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import './ManageItemsPage.css';
 
-export default function ManageItemsPage() {
+export function ManageItemsPage() {
     const navigate = useNavigate();
     const [itemType, setItemType] = useState('product'); // 'product' o 'service'
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [config, setConfig] = useState(null);
+    const [toast, setToast] = useState(null);
+
+
+    // Cargar config del tenant
+    useEffect(() => {
+        api.get('/api/config/current')
+            .then(response => {
+                setConfig(response.data);
+                // Si solo tiene servicios habilitados, cambiar tab inicial
+                if (response.data?.config?.features?.products === false &&
+                    response.data?.config?.features?.services !== false) {
+                    setItemType('service');
+                }
+            })
+            .catch(err => console.error('Error loading config:', err));
+    }, []);
 
     // Form data para producto
     const [productData, setProductData] = useState({
@@ -36,14 +53,14 @@ export default function ManageItemsPage() {
     });
 
     const handleProductChange = (e) => {
-        const { name, value } = e.target;
-        setProductData({ ...productData, [name]: value });
+        const {name, value} = e.target;
+        setProductData({...productData, [name]: value});
         setError('');
         setSuccess('');
     };
 
     const handleServiceChange = (e) => {
-        const { name, value, type, checked } = e.target;
+        const {name, value, type, checked} = e.target;
         setServiceData({
             ...serviceData,
             [name]: type === 'checkbox' ? checked : value
@@ -70,7 +87,8 @@ export default function ManageItemsPage() {
                 stock: parseInt(productData.stock)
             });
 
-            setSuccess('✅ Producto creado exitosamente');
+            setToast({message: 'Producto creado exitosamente', type: 'success'});
+            setTimeout(() => setToast(null), 3000);
 
             // Limpiar formulario
             setProductData({
@@ -86,8 +104,8 @@ export default function ManageItemsPage() {
 
             setTimeout(() => setSuccess(''), 3000);
         } catch (err) {
-            console.error('Error creating product:', err);
-            setError(err.response?.data?.message || 'Error al crear producto');
+            setToast({ message: 'Error al crear', type: 'error' });
+            setTimeout(() => setToast(null), 3000);
         } finally {
             setLoading(false);
         }
@@ -112,7 +130,8 @@ export default function ManageItemsPage() {
                 maxCapacity: serviceData.maxCapacity ? parseInt(serviceData.maxCapacity) : null
             });
 
-            setSuccess('✅ Servicio creado exitosamente');
+            setToast({ message: 'Servicio creado exitosamente', type: 'success' });
+            setTimeout(() => setToast(null), 3000);
 
             // Limpiar formulario
             setServiceData({
@@ -130,7 +149,8 @@ export default function ManageItemsPage() {
             setTimeout(() => setSuccess(''), 3000);
         } catch (err) {
             console.error('Error creating service:', err);
-            setError(err.response?.data?.message || 'Error al crear servicio');
+            setToast({ message: 'Error al crear', type: 'error' });
+            setTimeout(() => setToast(null), 3000);
         } finally {
             setLoading(false);
         }
@@ -404,6 +424,7 @@ export default function ManageItemsPage() {
                     </form>
                 )}
             </div>
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         </div>
     );
 }

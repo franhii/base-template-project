@@ -37,6 +37,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
     private final RestClient restClient;
+    private final OrderService orderService;
 
     @Value("${mercadopago.access-token}")
     private String mercadoPagoAccessToken;
@@ -55,10 +56,11 @@ public class PaymentService {
 
     public PaymentService(PaymentRepository paymentRepository,
                           OrderRepository orderRepository,
-                          RestClient.Builder builder) {
+                          RestClient.Builder builder, OrderService orderService) {
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
         this.restClient = builder.build();
+        this.orderService = orderService;
     }
 
     // ======================================================
@@ -332,6 +334,27 @@ public class PaymentService {
 
         logger.info("✅ Webhook procesado correctamente: paymentId={}, orderId={}, nuevoStatus={}",
                 payment.getId(), order.getId(), payment.getStatus());
+    }
+
+    @Transactional
+    public void cancelPayment(String paymentId, String reason) {
+        logger.info("🚫 Cancelando pago: {}", paymentId);
+
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Payment not found"));
+
+        payment.setStatus(Payment.PaymentStatus.CANCELLED);
+        payment.setReceiptNotes(reason);
+
+        // Restaurar stock
+        orderService.restoreStock(payment.getOrder());
+
+        payment.getOrder().setStatus(Order.OrderStatus.CANCELLED);
+
+        paymentRepository.save(payment);
+        orderRepository.save(payment.getOrder());
+
+        logger.info("✅ Pago cancelado y stock restaurado");
     }
 
 

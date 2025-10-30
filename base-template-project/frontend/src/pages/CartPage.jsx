@@ -8,18 +8,33 @@ export default function CartPage() {
     const navigate = useNavigate();
     const { cart, removeFromCart, updateQuantity, getTotal, clearCart } = useCart();
     const [confirmClear, setConfirmClear] = useState(false);
+    const [toast, setToast] = useState(null);
 
     const updateQuantityHandler = (itemId, newQuantity) => {
         if (newQuantity <= 0) {
             removeFromCart(itemId);
+            setToast({ message: 'Producto eliminado', type: 'info' });
         } else {
             updateQuantity(itemId, newQuantity);
         }
+        setTimeout(() => setToast(null), 3000);
     };
 
     const handleClearCart = () => {
         clearCart();
         setConfirmClear(false);
+        setToast({ message: 'Carrito vaciado', type: 'success' });
+        setTimeout(() => setToast(null), 3000);
+    };
+
+    const showToast = (message, type) => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
+
+    const handleAddToCart = () => {
+        addToCart(product, 1);
+        showToast('Producto agregado al carrito', 'success');
     };
 
     const getTotals = () => {
@@ -160,6 +175,7 @@ export default function CartPage() {
                     </div>
                 </div>
             </div>
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         </div>
     );
 }

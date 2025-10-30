@@ -18,6 +18,8 @@ export default function AdminDashboard() {
     const [pendingPayments, setPendingPayments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [toast, setToast] = useState(null);
+
 
     useEffect(() => {
         loadDashboardData();
@@ -61,25 +63,26 @@ export default function AdminDashboard() {
     const handleApprovePayment = async (paymentId) => {
         try {
             await api.patch(`/api/payments/${paymentId}/approve`);
-            alert('Pago aprobado exitosamente');
-            loadDashboardData(); // Recargar datos
+            setToast({ message: 'Pago aprobado exitosamente', type: 'success' });
+            setTimeout(() => setToast(null), 3000);
+            loadDashboardData();
         } catch (err) {
-            console.error('Error approving payment:', err);
-            alert('Error al aprobar el pago');
+            setToast({ message: 'Error al aprobar pago', type: 'error' });
+            setTimeout(() => setToast(null), 3000);
         }
     };
 
     const handleRejectPayment = async (paymentId) => {
         const reason = prompt('Motivo del rechazo:');
         if (!reason) return;
-
         try {
             await api.patch(`/api/payments/${paymentId}/reject`, { reason });
-            alert('Pago rechazado');
-            loadDashboardData(); // Recargar datos
+            setToast({ message: 'Pago rechazado', type: 'warning' });
+            setTimeout(() => setToast(null), 3000);
+            loadDashboardData();
         } catch (err) {
-            console.error('Error rejecting payment:', err);
-            alert('Error al rechazar el pago');
+            setToast({ message: 'Error al rechazar pago', type: 'error' });
+            setTimeout(() => setToast(null), 3000);
         }
     };
 
@@ -292,6 +295,7 @@ export default function AdminDashboard() {
                     Actualizar Datos
                 </button>
             </div>
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         </div>
     );
 }

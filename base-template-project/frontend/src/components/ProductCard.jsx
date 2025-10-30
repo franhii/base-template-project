@@ -4,11 +4,12 @@ import './ProductCard.css';
 
 export default function ProductCard({ product }) {
     const { addToCart } = useCart();
+    const [toast, setToast] = useState(null);
 
     const handleAddToCart = () => {
         addToCart(product, 1);
-        // Feedback visual (opcional)
-        alert(`${product.name} agregado al carrito`);
+        setToast({ message: `${product.name} agregado al carrito`, type: 'success' });
+        setTimeout(() => setToast(null), 3000);
     };
 
     return (
@@ -66,6 +67,7 @@ export default function ProductCard({ product }) {
                     <small className="product-sku">SKU: {product.sku}</small>
                 )}
             </div>
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         </div>
     );
 }

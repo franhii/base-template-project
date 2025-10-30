@@ -13,7 +13,7 @@ import RegisterPage from './pages/RegisterPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import AdminPage from './pages/AdminPage';
-import ManageItemsPage from './pages/ManageItemsPage';
+import {ManageItemsPage} from './pages/ManageItemsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import SuccessPage from './pages/SuccessPage';
 import FailurePage from './pages/FailurePage';

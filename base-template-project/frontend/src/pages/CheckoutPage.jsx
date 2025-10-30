@@ -12,6 +12,8 @@ export default function CheckoutPage() {
     const [error, setError] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('MERCADO_PAGO');
     const [notes, setNotes] = useState('');
+    const [toast, setToast] = useState(null);
+
 
     const handleCheckout = async () => {
         if (cart.length === 0) {
@@ -52,8 +54,8 @@ export default function CheckoutPage() {
             } else {
                 // Limpar carrito y mostrar éxito
                 clearCart();
-                alert('¡Orden creada exitosamente!');
-                navigate('/');
+                setToast({ message: '¡Orden creada exitosamente!', type: 'success' });
+                setTimeout(() => navigate('/'), 3000);
             }
         } catch (err) {
             console.error('Checkout error:', err);
@@ -141,6 +143,7 @@ export default function CheckoutPage() {
                     </button>
                 </div>
             </div>
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         </div>
     );
 }
