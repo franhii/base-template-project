@@ -1,10 +1,8 @@
 package com.example.core.service;
 
 import com.example.core.dto.CreatePaymentRequest;
-import com.example.core.model.Item;
-import com.example.core.model.Order;
-import com.example.core.model.OrderItem;
-import com.example.core.model.Payment;
+import com.example.core.model.*;
+import com.example.core.repository.BookingRepository;
 import com.example.core.repository.OrderRepository;
 import com.example.core.repository.PaymentRepository;
 import com.mercadopago.MercadoPagoConfig;
@@ -24,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +33,7 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
+    private final BookingRepository bookingRepository;
     private final RestClient restClient;
     private final OrderService orderService;
 
@@ -56,9 +54,12 @@ public class PaymentService {
 
     public PaymentService(PaymentRepository paymentRepository,
                           OrderRepository orderRepository,
-                          RestClient.Builder builder, OrderService orderService) {
+                          BookingRepository bookingRepository,
+                          RestClient.Builder builder,
+                          OrderService orderService) {
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
+        this.bookingRepository = bookingRepository;
         this.restClient = builder.build();
         this.orderService = orderService;
     }
@@ -135,6 +136,9 @@ public class PaymentService {
         if (payment.getOrder() != null) {
             payment.getOrder().setStatus(Order.OrderStatus.CONFIRMED);
             orderRepository.save(payment.getOrder());
+
+            // 🗓️ Confirmar bookings asociados
+            confirmOrderBookings(payment.getOrder());
         }
 
         logger.info("💰 Pago aprobado y orden confirmada");
@@ -153,6 +157,18 @@ public class PaymentService {
 
         payment.setStatus(Payment.PaymentStatus.REJECTED);
         payment.setReceiptNotes(reason);
+
+        // 🔄 Restaurar stock cuando se rechaza el pago
+        if (payment.getOrder() != null) {
+            orderService.restoreStock(payment.getOrder());
+            payment.getOrder().setStatus(Order.OrderStatus.CANCELLED);
+            orderRepository.save(payment.getOrder());
+
+            // 🗓️ Cancelar bookings asociados
+            cancelOrderBookings(payment.getOrder(), "Pago rechazado: " + reason);
+
+            logger.info("↩️ Stock restaurado por rechazo de pago - orderId: {}", payment.getOrder().getId());
+        }
 
         return paymentRepository.save(payment);
     }
@@ -311,12 +327,19 @@ public class PaymentService {
                 payment.setStatus(Payment.PaymentStatus.APPROVED);
                 payment.setConfirmedAt(LocalDateTime.now());
                 order.setStatus(Order.OrderStatus.CONFIRMED);
+                // 🗓️ Confirmar bookings asociados
+                confirmOrderBookings(order);
                 break;
 
             case "rejected":
             case "cancelled":
                 payment.setStatus(Payment.PaymentStatus.REJECTED);
-                order.setStatus(Order.OrderStatus.CANCELLED); // opcional, si querés mantenerlo sincronizado
+                order.setStatus(Order.OrderStatus.CANCELLED);
+                // 🔄 Restaurar stock cuando MercadoPago rechaza/cancela el pago
+                orderService.restoreStock(order);
+                // 🗓️ Cancelar bookings asociados
+                cancelOrderBookings(order, "Pago rechazado por MercadoPago");
+                logger.info("↩️ Stock restaurado por webhook MP - orderId: {}", order.getId());
                 break;
 
             case "in_process":
@@ -349,15 +372,54 @@ public class PaymentService {
         // Restaurar stock
         orderService.restoreStock(payment.getOrder());
 
+        // 🗓️ Cancelar bookings asociados
+        cancelOrderBookings(payment.getOrder(), reason);
+
         payment.getOrder().setStatus(Order.OrderStatus.CANCELLED);
 
         paymentRepository.save(payment);
         orderRepository.save(payment.getOrder());
 
-        logger.info("✅ Pago cancelado y stock restaurado");
+        logger.info("✅ Pago cancelado, stock restaurado y bookings cancelados");
     }
 
+    // ======================================================
+    // 🗓️ MÉTODOS AUXILIARES PARA BOOKINGS
+    // ======================================================
 
+    /**
+     * Confirmar todos los bookings de una orden
+     */
+    private void confirmOrderBookings(Order order) {
+        List<Booking> bookings = bookingRepository.findByOrder(order);
 
+        for (Booking booking : bookings) {
+            if (booking.getStatus() == Booking.BookingStatus.PENDING) {
+                booking.setStatus(Booking.BookingStatus.CONFIRMED);
+                bookingRepository.save(booking);
+                logger.info("✅ Booking confirmado: {} - Fecha: {} - Hora: {}",
+                        booking.getId(), booking.getBookingDate(), booking.getStartTime());
+            }
+        }
+    }
 
+    /**
+     * Cancelar todos los bookings de una orden
+     */
+    private void cancelOrderBookings(Order order, String reason) {
+        List<Booking> bookings = bookingRepository.findByOrder(order);
+
+        for (Booking booking : bookings) {
+            if (booking.getStatus() == Booking.BookingStatus.PENDING ||
+                booking.getStatus() == Booking.BookingStatus.CONFIRMED) {
+                booking.setStatus(Booking.BookingStatus.CANCELLED);
+                if (reason != null) {
+                    booking.setNotes(booking.getNotes() + " | " + reason);
+                }
+                bookingRepository.save(booking);
+                logger.info("🚫 Booking cancelado: {} - Fecha: {} - Hora: {}",
+                        booking.getId(), booking.getBookingDate(), booking.getStartTime());
+            }
+        }
+    }
 }

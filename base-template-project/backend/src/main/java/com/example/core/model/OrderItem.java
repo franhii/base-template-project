@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Data
 @Entity
@@ -29,4 +31,8 @@ public class OrderItem {
 
     private String itemName; // Guardar nombre por si se elimina el item
     private String itemType; // "PRODUCT" o "SERVICE"
+
+    // ===== CAMPOS PARA SERVICIOS CON BOOKING =====
+    private LocalDate bookingDate; // Fecha del turno (solo para servicios)
+    private LocalTime bookingTime; // Hora del turno (solo para servicios)
 }

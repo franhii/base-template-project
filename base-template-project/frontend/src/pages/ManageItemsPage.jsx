@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import Toast from '../components/Toast';
 import './ManageItemsPage.css';
 
 export function ManageItemsPage() {
@@ -49,7 +50,12 @@ export function ManageItemsPage() {
         durationMinutes: '',
         scheduleType: 'ON_DEMAND',
         maxCapacity: '',
-        requiresBooking: false
+        requiresBooking: false,
+        // Campos de disponibilidad
+        availableDays: [],
+        workStartTime: '',
+        workEndTime: '',
+        slotIntervalMinutes: ''
     });
 
     const handleProductChange = (e) => {
@@ -69,12 +75,48 @@ export function ManageItemsPage() {
         setSuccess('');
     };
 
+    const handleDayToggle = (day) => {
+        const newDays = serviceData.availableDays.includes(day)
+            ? serviceData.availableDays.filter(d => d !== day)
+            : [...serviceData.availableDays, day];
+
+        setServiceData({
+            ...serviceData,
+            availableDays: newDays
+        });
+    };
+
     const handleSubmitProduct = async (e) => {
         e.preventDefault();
 
         if (!productData.name || !productData.price || !productData.stock) {
-            setError('Completa los campos obligatorios');
+            setToast({ message: 'Completa los campos obligatorios', type: 'error' });
+            setTimeout(() => setToast(null), 3000);
             return;
+        }
+
+        // 🛡️ Validaciones adicionales
+        const price = parseFloat(productData.price);
+        const stock = parseInt(productData.stock);
+
+        if (price < 0) {
+            setToast({ message: 'El precio no puede ser negativo', type: 'error' });
+            setTimeout(() => setToast(null), 3000);
+            return;
+        }
+
+        if (stock < 0) {
+            setToast({ message: 'El stock no puede ser negativo', type: 'error' });
+            setTimeout(() => setToast(null), 3000);
+            return;
+        }
+
+        if (productData.type === 'PHYSICAL' && stock === 0) {
+            setToast({
+                message: 'Advertencia: Producto físico sin stock. Los clientes no podrán comprarlo.',
+                type: 'warning'
+            });
+            setTimeout(() => setToast(null), 5000);
         }
 
         try {
@@ -83,8 +125,8 @@ export function ManageItemsPage() {
 
             await api.post('/api/items/products', {
                 ...productData,
-                price: parseFloat(productData.price),
-                stock: parseInt(productData.stock)
+                price,
+                stock
             });
 
             setToast({message: 'Producto creado exitosamente', type: 'success'});
@@ -115,20 +157,57 @@ export function ManageItemsPage() {
         e.preventDefault();
 
         if (!serviceData.name || !serviceData.price || !serviceData.durationMinutes) {
-            setError('Completa los campos obligatorios');
+            setToast({ message: 'Completa los campos obligatorios', type: 'error' });
+            setTimeout(() => setToast(null), 3000);
             return;
+        }
+
+        // 🛡️ Validaciones para servicios con reserva
+        if (serviceData.requiresBooking) {
+            if (serviceData.availableDays.length === 0) {
+                setToast({ message: 'Selecciona al menos un día disponible', type: 'error' });
+                setTimeout(() => setToast(null), 3000);
+                return;
+            }
+
+            if (!serviceData.workStartTime || !serviceData.workEndTime) {
+                setToast({ message: 'Define el horario de atención', type: 'error' });
+                setTimeout(() => setToast(null), 3000);
+                return;
+            }
+
+            if (!serviceData.slotIntervalMinutes) {
+                setToast({ message: 'Define el intervalo entre turnos', type: 'error' });
+                setTimeout(() => setToast(null), 3000);
+                return;
+            }
         }
 
         try {
             setLoading(true);
             setError('');
 
-            await api.post('/api/items/services', {
-                ...serviceData,
+            const payload = {
+                name: serviceData.name,
+                description: serviceData.description,
                 price: parseFloat(serviceData.price),
+                category: serviceData.category,
+                imageUrl: serviceData.imageUrl,
                 durationMinutes: parseInt(serviceData.durationMinutes),
-                maxCapacity: serviceData.maxCapacity ? parseInt(serviceData.maxCapacity) : null
-            });
+                scheduleType: serviceData.scheduleType,
+                maxCapacity: serviceData.maxCapacity ? parseInt(serviceData.maxCapacity) : null,
+                requiresBooking: serviceData.requiresBooking
+            };
+
+            // Solo agregar campos de booking si requiresBooking es true
+            if (serviceData.requiresBooking) {
+                payload.availableDays = serviceData.availableDays;
+                payload.workStartTime = serviceData.workStartTime;
+                payload.workEndTime = serviceData.workEndTime;
+                payload.slotIntervalMinutes = parseInt(serviceData.slotIntervalMinutes);
+            }
+
+            await api.post('/api/items/services', payload);
 
             setToast({ message: 'Servicio creado exitosamente', type: 'success' });
             setTimeout(() => setToast(null), 3000);
@@ -143,13 +222,17 @@ export function ManageItemsPage() {
                 durationMinutes: '',
                 scheduleType: 'ON_DEMAND',
                 maxCapacity: '',
-                requiresBooking: false
+                requiresBooking: false,
+                availableDays: [],
+                workStartTime: '',
+                workEndTime: '',
+                slotIntervalMinutes: ''
             });
 
             setTimeout(() => setSuccess(''), 3000);
         } catch (err) {
             console.error('Error creating service:', err);
-            setToast({ message: 'Error al crear', type: 'error' });
+            setToast({ message: 'Error al crear: ' + (err.response?.data?.message || err.message), type: 'error' });
             setTimeout(() => setToast(null), 3000);
         } finally {
             setLoading(false);
@@ -417,6 +500,83 @@ export function ManageItemsPage() {
                                 Requiere Reserva Previa
                             </label>
                         </div>
+
+                        {/* 🗓️ CONFIGURACIÓN DE DISPONIBILIDAD (solo si requiresBooking) */}
+                        {serviceData.requiresBooking && (
+                            <div className="booking-config">
+                                <h3>Configuración de Turnos</h3>
+
+                                {/* Días disponibles */}
+                                <div className="form-group">
+                                    <label>Días Disponibles *</label>
+                                    <div className="days-selector">
+                                        {['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'].map((day) => {
+                                            const dayLabels = {
+                                                'MONDAY': 'Lun',
+                                                'TUESDAY': 'Mar',
+                                                'WEDNESDAY': 'Mié',
+                                                'THURSDAY': 'Jue',
+                                                'FRIDAY': 'Vie',
+                                                'SATURDAY': 'Sáb',
+                                                'SUNDAY': 'Dom'
+                                            };
+                                            return (
+                                                <button
+                                                    key={day}
+                                                    type="button"
+                                                    className={`day-btn ${serviceData.availableDays.includes(day) ? 'active' : ''}`}
+                                                    onClick={() => handleDayToggle(day)}
+                                                >
+                                                    {dayLabels[day]}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Horarios */}
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Hora de Inicio *</label>
+                                        <input
+                                            type="time"
+                                            name="workStartTime"
+                                            value={serviceData.workStartTime}
+                                            onChange={handleServiceChange}
+                                            required={serviceData.requiresBooking}
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Hora de Fin *</label>
+                                        <input
+                                            type="time"
+                                            name="workEndTime"
+                                            value={serviceData.workEndTime}
+                                            onChange={handleServiceChange}
+                                            required={serviceData.requiresBooking}
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Intervalo entre Turnos (min) *</label>
+                                        <input
+                                            type="number"
+                                            name="slotIntervalMinutes"
+                                            value={serviceData.slotIntervalMinutes}
+                                            onChange={handleServiceChange}
+                                            placeholder="30"
+                                            min="5"
+                                            required={serviceData.requiresBooking}
+                                        />
+                                    </div>
+                                </div>
+
+                                <small className="hint">
+                                    ℹ️ Ejemplo: Si tu horario es 9:00 a 18:00 con turnos de 30 minutos, se crearán slots cada media hora.
+                                </small>
+                            </div>
+                        )}
 
                         <button type="submit" className="btn-submit" disabled={loading}>
                             {loading ? 'Creando...' : 'Crear Servicio'}

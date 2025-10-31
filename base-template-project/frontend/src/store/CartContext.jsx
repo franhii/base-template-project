@@ -33,13 +33,30 @@ export const CartProvider = ({ children }) => {
 
             if (existingItem) {
                 // Si ya existe, actualizar cantidad
+                // 🛡️ Validar stock si es producto físico
+                const newQuantity = existingItem.quantity + quantity;
+                if (item.stock !== undefined && newQuantity > item.stock) {
+                    console.warn(`Stock insuficiente para ${item.name}. Stock: ${item.stock}, Solicitado: ${newQuantity}`);
+                    return prevCart.map(i =>
+                        i.id === item.id
+                            ? { ...i, quantity: item.stock } // Limitar al stock máximo
+                            : i
+                    );
+                }
+
                 return prevCart.map(i =>
                     i.id === item.id
-                        ? { ...i, quantity: i.quantity + quantity }
+                        ? { ...i, quantity: newQuantity }
                         : i
                 );
             } else {
                 // Si no existe, agregarlo
+                // 🛡️ Validar stock si es producto físico
+                if (item.stock !== undefined && quantity > item.stock) {
+                    console.warn(`Stock insuficiente para ${item.name}. Stock: ${item.stock}, Solicitado: ${quantity}`);
+                    return [...prevCart, { ...item, quantity: item.stock }];
+                }
+
                 return [...prevCart, { ...item, quantity }];
             }
         });
@@ -56,9 +73,17 @@ export const CartProvider = ({ children }) => {
             removeFromCart(itemId);
         } else {
             setCart(prevCart =>
-                prevCart.map(i =>
-                    i.id === itemId ? { ...i, quantity } : i
-                )
+                prevCart.map(i => {
+                    if (i.id === itemId) {
+                        // 🛡️ Validar stock si es producto físico
+                        if (i.stock !== undefined && quantity > i.stock) {
+                            console.warn(`Stock insuficiente. Stock: ${i.stock}, Solicitado: ${quantity}`);
+                            return { ...i, quantity: i.stock }; // Limitar al stock máximo
+                        }
+                        return { ...i, quantity };
+                    }
+                    return i;
+                })
             );
         }
     };

@@ -1,12 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCart } from '../store/CartContext';
+import Toast from './Toast';
 import './ProductCard.css';
 
 export default function ProductCard({ product }) {
-    const { addToCart } = useCart();
+    const { addToCart, cart } = useCart();
     const [toast, setToast] = useState(null);
 
     const handleAddToCart = () => {
+        // 🛡️ Validar stock antes de agregar
+        if (product.stock === 0) {
+            setToast({ message: 'Producto sin stock', type: 'error' });
+            setTimeout(() => setToast(null), 3000);
+            return;
+        }
+
+        // 🛡️ Verificar si ya está en el carrito y calcular total
+        const existingItem = cart.find(i => i.id === product.id);
+        const currentQuantityInCart = existingItem ? existingItem.quantity : 0;
+
+        if (currentQuantityInCart >= product.stock) {
+            setToast({
+                message: `Ya tienes el máximo disponible (${product.stock}) en el carrito`,
+                type: 'warning'
+            });
+            setTimeout(() => setToast(null), 3000);
+            return;
+        }
+
         addToCart(product, 1);
         setToast({ message: `${product.name} agregado al carrito`, type: 'success' });
         setTimeout(() => setToast(null), 3000);

@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,17 +24,20 @@ public class OrderService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final ServiceRepository serviceRepository;
+    private final BookingRepository bookingRepository;
 
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
                         UserRepository userRepository,
                         ProductRepository productRepository,
-                        ServiceRepository serviceRepository) {
+                        ServiceRepository serviceRepository,
+                        BookingRepository bookingRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.userRepository = userRepository;
         this.productRepository = productRepository;
         this.serviceRepository = serviceRepository;
+        this.bookingRepository = bookingRepository;
     }
 
     @Transactional
@@ -106,6 +111,18 @@ public class OrderService {
             orderItem.setItemName(item.getName());
             orderItem.setItemType(item instanceof Product ? "PRODUCT" : "SERVICE");
 
+            // 🗓️ Si es servicio con booking, guardar fecha/hora
+            if (item instanceof ServiceItem) {
+                ServiceItem service = (ServiceItem) item;
+                if (service.isRequiresBooking()) {
+                    if (itemReq.getBookingDate() == null || itemReq.getBookingTime() == null) {
+                        throw new RuntimeException("El servicio '" + service.getName() + "' requiere fecha y hora de reserva");
+                    }
+                    orderItem.setBookingDate(LocalDate.parse(itemReq.getBookingDate()));
+                    orderItem.setBookingTime(LocalTime.parse(itemReq.getBookingTime()));
+                }
+            }
+
             order.getItems().add(orderItem);
 
             // Calcular total
@@ -115,6 +132,34 @@ public class OrderService {
 
         order.setTotal(total);
         Order savedOrder = orderRepository.save(order);
+
+        // 4️⃣ CREAR BOOKINGS PARA SERVICIOS
+        for (OrderItem orderItem : savedOrder.getItems()) {
+            if ("SERVICE".equals(orderItem.getItemType()) && orderItem.getBookingDate() != null) {
+                ServiceItem service = (ServiceItem) orderItem.getItem();
+
+                // Crear un booking por cada cantidad
+                for (int i = 0; i < orderItem.getQuantity(); i++) {
+                    Booking booking = new Booking();
+                    booking.setService(service);
+                    booking.setOrder(savedOrder);
+                    booking.setOrderItem(orderItem);
+                    booking.setUser(user);
+                    booking.setTenant(user.getTenant());
+                    booking.setBookingDate(orderItem.getBookingDate());
+                    booking.setStartTime(orderItem.getBookingTime());
+                    booking.setEndTime(orderItem.getBookingTime().plusMinutes(service.getDurationMinutes()));
+                    booking.setStatus(Booking.BookingStatus.PENDING);
+                    booking.setCustomerName(user.getName());
+                    booking.setCustomerEmail(user.getEmail());
+                    booking.setNotes(savedOrder.getNotes());
+
+                    bookingRepository.save(booking);
+                    logger.info("🗓️ Booking creado para orden: {} - Fecha: {} - Hora: {}",
+                            savedOrder.getId(), booking.getBookingDate(), booking.getStartTime());
+                }
+            }
+        }
 
         logger.info("✅ Orden creada: {} - Total: ${}", savedOrder.getId(), total);
         return savedOrder;
@@ -142,6 +187,37 @@ public class OrderService {
                 }
             }
         }
+    }
+
+    /**
+     * Cancelar orden completa con restauración de stock
+     */
+    @Transactional
+    public Order cancelOrder(String orderId, String reason) {
+        logger.info("🚫 Cancelando orden: {} - Razón: {}", orderId, reason);
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // Solo se puede cancelar si está PENDING o CONFIRMED
+        if (order.getStatus() != Order.OrderStatus.PENDING &&
+            order.getStatus() != Order.OrderStatus.CONFIRMED) {
+            throw new RuntimeException("No se puede cancelar una orden en estado: " + order.getStatus());
+        }
+
+        // Restaurar stock
+        restoreStock(order);
+
+        // Cambiar estado
+        order.setStatus(Order.OrderStatus.CANCELLED);
+        if (reason != null && !reason.isEmpty()) {
+            order.setNotes(order.getNotes() + " | CANCELACIÓN: " + reason);
+        }
+
+        Order savedOrder = orderRepository.save(order);
+        logger.info("✅ Orden cancelada exitosamente");
+
+        return savedOrder;
     }
 
     private Item findItem(String itemId) {

@@ -190,6 +190,66 @@
     cursor: not-allowed;
 }
 
+/* ========== Booking Configuration ========== */
+.booking-config {
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 25px;
+    margin-top: 20px;
+}
+
+.booking-config h3 {
+    font-size: 1.2em;
+    color: #1e293b;
+    margin: 0 0 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.days-selector {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.day-btn {
+    padding: 10px 16px;
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #64748b;
+    min-width: 55px;
+}
+
+.day-btn:hover {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+}
+
+.day-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+    color: white;
+}
+
+.hint {
+    display: block;
+    margin-top: 15px;
+    padding: 12px 15px;
+    background: #eff6ff;
+    border-left: 4px solid #3b82f6;
+    border-radius: 6px;
+    color: #1e40af;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
 /* ========== Responsive ========== */
 @media (max-width: 768px) {
     .manage-header {
@@ -212,5 +272,20 @@
 
     .form-row {
         grid-template-columns: 1fr;
+    }
+
+    .booking-config {
+        padding: 15px;
+    }
+
+    .days-selector {
+        justify-content: space-between;
+    }
+
+    .day-btn {
+        flex: 1;
+        min-width: 45px;
+        padding: 10px 8px;
+        font-size: 0.85em;
     }
 }

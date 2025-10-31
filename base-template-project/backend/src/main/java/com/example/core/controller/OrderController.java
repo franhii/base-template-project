@@ -119,6 +119,32 @@ public class OrderController {
         return ResponseEntity.ok(toDTO(order));
     }
 
+    // Cancelar orden con restauración de stock
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('CLIENTE', 'VENDEDOR', 'ADMIN')")
+    public ResponseEntity<OrderDTO> cancelOrder(
+            @PathVariable String id,
+            @RequestBody(required = false) java.util.Map<String, String> body,
+            Authentication authentication) {
+
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // Verificar permisos: solo el dueño o vendedor/admin del tenant pueden cancelar
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email).orElseThrow();
+
+        if (!order.getUser().getId().equals(user.getId()) &&
+                !order.getTenant().getId().equals(user.getTenant().getId())) {
+            return ResponseEntity.status(403).build();
+        }
+
+        String reason = body != null ? body.get("reason") : "Cancelado por el usuario";
+        Order cancelledOrder = orderService.cancelOrder(id, reason);
+
+        return ResponseEntity.ok(toDTO(cancelledOrder));
+    }
+
     // Mapper manual
     private OrderDTO toDTO(Order order) {
         OrderDTO dto = new OrderDTO();

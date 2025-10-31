@@ -24,5 +24,9 @@ public class CreateOrderRequest {
 
         @NotNull
         private Integer quantity;
+
+        // Para servicios con booking
+        private String bookingDate; // formato: "2024-11-15"
+        private String bookingTime; // formato: "14:00"
     }
 }
