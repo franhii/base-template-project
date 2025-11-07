@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../store/CartContext';
@@ -66,10 +65,17 @@ export default function Navbar({ user, setUser }) {
                                 )}
                             </Link>
 
-                            {/* ✅ ESTE BLOQUE DEBE ESTAR */}
+                            {/* Admin/Vendedor */}
                             {(user.role === 'ADMIN' || user.role === 'VENDEDOR') && (
                                 <Link to="/admin" className="navbar-link navbar-admin">
                                     📊 Admin
+                                </Link>
+                            )}
+
+                            {/* ✅ NUEVO: Super Admin */}
+                            {user.role === 'SUPER_ADMIN' && (
+                                <Link to="/super-admin" className="navbar-link navbar-superadmin">
+                                    🔐 Super Admin
                                 </Link>
                             )}
 

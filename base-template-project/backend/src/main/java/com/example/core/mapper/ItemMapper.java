@@ -23,6 +23,10 @@ public interface ItemMapper {
 
     @Mapping(target = "itemType", constant = "SERVICE")
     @Mapping(target = "scheduleType", source = "scheduleType")
+    @Mapping(target = "availableDays", source = "availableDays")
+    @Mapping(target = "workStartTime", source = "workStartTime")
+    @Mapping(target = "workEndTime", source = "workEndTime")
+    @Mapping(target = "slotIntervalMinutes", source = "slotIntervalMinutes")
     ServiceDTO toServiceDTO(ServiceItem service);
 
     @Mapping(target = "id", ignore = true)
@@ -30,5 +34,10 @@ public interface ItemMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "active", defaultValue = "true")
     @Mapping(target = "tenant", ignore = true)
+    // ✅ IMPORTANTE: Mapear los campos de booking
+    @Mapping(target = "availableDays", source = "availableDays")
+    @Mapping(target = "workStartTime", source = "workStartTime")
+    @Mapping(target = "workEndTime", source = "workEndTime")
+    @Mapping(target = "slotIntervalMinutes", source = "slotIntervalMinutes")
     ServiceItem fromServiceDTO(ServiceDTO dto);
 }

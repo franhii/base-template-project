@@ -28,18 +28,18 @@ public class ItemController {
     private final ServiceRepository serviceRepository;
     private final ItemMapper itemMapper;
     private final TenantRepository tenantRepository;
-    private final UserRepository userRepository; // ← AGREGAR
+    private final UserRepository userRepository;
 
     public ItemController(ProductRepository productRepository,
                           ServiceRepository serviceRepository,
                           ItemMapper itemMapper,
                           TenantRepository tenantRepository,
-                          UserRepository userRepository) { // ← AGREGAR
+                          UserRepository userRepository) {
         this.productRepository = productRepository;
         this.serviceRepository = serviceRepository;
         this.itemMapper = itemMapper;
         this.tenantRepository = tenantRepository;
-        this.userRepository = userRepository; // ← AGREGAR
+        this.userRepository = userRepository;
     }
 
     // ========== PRODUCTOS ==========
@@ -51,47 +51,14 @@ public class ItemController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /* PARA PROD
-    @GetMapping("/products")
-    public ResponseEntity<List<ProductDTO>> getAllProducts() {
-        // DEBUG
-        String tenantId = TenantContext.getCurrentTenant();
-        System.out.println("🔍 TenantContext.getCurrentTenant() = " + tenantId);
-
-        if (tenantId == null) {
-            System.out.println("⚠️ TenantContext es NULL, usando tenant por defecto");
-            // Fallback temporal
-            Tenant tenant = tenantRepository.findBySubdomain("default")
-                    .orElseThrow(() -> new RuntimeException("Default tenant not found"));
-            tenantId = tenant.getId();
-        }
-
-        Tenant tenant = tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new RuntimeException("Tenant not found: "));
-
-        System.out.println("🏢 Tenant encontrado: " + tenant.getBusinessName() + " (ID: " + tenant.getId() + ")");
-
-        List<Product> products = productRepository.findByActiveTrueAndTenant(tenant);
-        System.out.println("📦 Productos encontrados: " + products.size());
-
-        List<ProductDTO> dtos = products.stream()
-                .map(itemMapper::toProductDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(dtos);
-    }
-    */
-
     @GetMapping("/products")
     public ResponseEntity<List<ProductDTO>> getAllProducts(Authentication authentication) {
-        // Si hay usuario autenticado, usar su tenant
         if (authentication != null && authentication.isAuthenticated()) {
             String email = authentication.getName();
             User user = userRepository.findByEmail(email).orElse(null);
 
             if (user != null) {
                 Tenant tenant = user.getTenant();
-                System.out.println("🏢 Usando tenant del usuario: " + tenant.getBusinessName() + "Tenant id: " + tenant.getId());
-
                 List<Product> products = productRepository.findByActiveTrueAndTenant(tenant);
                 List<ProductDTO> dtos = products.stream()
                         .map(itemMapper::toProductDTO)
@@ -100,8 +67,6 @@ public class ItemController {
             }
         }
 
-        // Fallback: traer de todos los tenants (solo para debug)
-        System.out.println("⚠️ No hay usuario autenticado, trayendo todos los productos");
         List<Product> products = productRepository.findByActiveTrue();
         List<ProductDTO> dtos = products.stream()
                 .map(itemMapper::toProductDTO)
@@ -115,7 +80,6 @@ public class ItemController {
             @RequestBody ProductDTO dto,
             Authentication authentication) {
 
-        // Obtener usuario autenticado y su tenant
         String email = authentication.getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -123,7 +87,7 @@ public class ItemController {
         Tenant tenant = user.getTenant();
 
         Product product = itemMapper.fromProductDTO(dto);
-        product.setTenant(tenant); // ← Usar el tenant del usuario
+        product.setTenant(tenant);
         product = productRepository.save(product);
         return ResponseEntity.ok(itemMapper.toProductDTO(product));
     }
@@ -150,22 +114,6 @@ public class ItemController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping("/services")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
-    public ResponseEntity<ServiceDTO> createService(
-            @RequestBody ServiceDTO dto,
-            Authentication authentication) {
-
-        // Obtener usuario autenticado y su tenant
-        String email = authentication.getName();
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Tenant tenant = user.getTenant();
-
-        ServiceItem service = itemMapper.fromServiceDTO(dto);
-        service.setTenant(tenant); // ← Usar el tenant del usuario
-        service = serviceRepository.save(service);
-        return ResponseEntity.ok(itemMapper.toServiceDTO(service));
-    }
+    // ❌ REMOVIDO: createService
+    // Ahora solo el SUPER_ADMIN puede crear servicios desde /api/super-admin/services
 }

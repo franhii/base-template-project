@@ -13,6 +13,8 @@ import RegisterPage from './pages/RegisterPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import AdminPage from './pages/AdminPage';
+import SuperAdminPage from './pages/SuperAdminPage'; // ✅ NUEVO
+import MyAccountPage from './pages/MyAccountPage'; // ✅ NUEVO
 import {ManageItemsPage} from './pages/ManageItemsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import SuccessPage from './pages/SuccessPage';
@@ -33,9 +35,7 @@ export default function App() {
                 setConfig(response.data);
                 const tenantConfig = response.data.config;
 
-                // ========== Aplicar branding dinámico ==========
-
-                // Colores
+                // Aplicar branding dinámico
                 if (tenantConfig?.primaryColor) {
                     document.documentElement.style.setProperty(
                         '--primary-color',
@@ -54,8 +54,6 @@ export default function App() {
                         tenantConfig.accentColor
                     );
                 }
-
-                // Fuente
                 if (tenantConfig?.fontFamily) {
                     document.documentElement.style.setProperty(
                         '--font-family',
@@ -75,7 +73,7 @@ export default function App() {
                     document.getElementsByTagName('head')[0].appendChild(link);
                 }
 
-                // CSS Custom (opcional)
+                // CSS Custom
                 if (tenantConfig?.customCssUrl) {
                     const customCss = document.createElement('link');
                     customCss.rel = 'stylesheet';
@@ -83,7 +81,7 @@ export default function App() {
                     document.head.appendChild(customCss);
                 }
 
-                // Meta description para SEO
+                // Meta description
                 if (tenantConfig?.businessDescription) {
                     let metaDescription = document.querySelector('meta[name="description"]');
                     if (!metaDescription) {
@@ -129,6 +127,16 @@ export default function App() {
         return element;
     };
 
+    // ✅ NUEVO: SuperAdminRoute - Solo SUPER_ADMIN
+    const SuperAdminRoute = ({ element }) => {
+        if (loading) return <div className="app-loading"><div className="spinner"></div><p>Cargando...</p></div>;
+        if (!user) return <Navigate to="/login" />;
+        if (user.role !== 'SUPER_ADMIN') {
+            return <Navigate to="/" />;
+        }
+        return element;
+    };
+
     if (loading) {
         return (
             <div className="app-loading">
@@ -163,36 +171,7 @@ export default function App() {
                                 }
                             />
 
-                            {/* Rutas Protegidas - Cliente */}
-                            <Route
-                                path="/cart"
-                                element={<ProtectedRoute element={<CartPage />} />}
-                            />
-                            <Route
-                                path="/checkout"
-                                element={<ProtectedRoute element={<CheckoutPage />} />}
-                            />
-
-                            {/* Rutas Protegidas - Admin/Vendedor */}
-                            <Route
-                                path="/admin"
-                                element={<AdminRoute element={<AdminPage />} />}
-                            />
-                            <Route
-                                path="/admin/manage-items"
-                                element={<AdminRoute element={<ManageItemsPage />} />}
-                            />
-
-                            {/* 404 */}
-                            <Route path="*" element={<NotFoundPage />} />
-                        </Routes>
-                        <Routes>
-                            {/* Rutas Públicas */}
-                            <Route path="/" element={<HomePage config={config} />} />
-                            <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage setUser={setUser} />} />
-                            <Route path="/register" element={user ? <Navigate to="/" /> : <RegisterPage setUser={setUser} />} />
-
-                            {/* Rutas de Mercado Pago - AGREGAR ESTAS */}
+                            {/* Rutas de Mercado Pago */}
                             <Route path="/success" element={<SuccessPage />} />
                             <Route path="/failure" element={<FailurePage />} />
                             <Route path="/pending" element={<PendingPage />} />
@@ -204,6 +183,9 @@ export default function App() {
                             {/* Rutas Protegidas - Admin/Vendedor */}
                             <Route path="/admin" element={<AdminRoute element={<AdminPage />} />} />
                             <Route path="/admin/manage-items" element={<AdminRoute element={<ManageItemsPage />} />} />
+
+                            {/* ✅ NUEVO: Ruta Super Admin */}
+                            <Route path="/super-admin" element={<SuperAdminRoute element={<SuperAdminPage />} />} />
 
                             {/* 404 */}
                             <Route path="*" element={<NotFoundPage />} />

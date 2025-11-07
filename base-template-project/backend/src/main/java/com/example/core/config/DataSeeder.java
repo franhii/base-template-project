@@ -11,9 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Configuration
 public class DataSeeder {
@@ -23,13 +21,14 @@ public class DataSeeder {
                                    TenantRepository tenantRepository,
                                    PasswordEncoder passwordEncoder) {
         return args -> {
-            // Crear tenant por defecto
+            // ========== CREAR TENANT POR DEFECTO ==========
             Tenant defaultTenant = tenantRepository.findBySubdomain("default")
                     .orElseGet(() -> {
                         Tenant t = new Tenant();
                         t.setSubdomain("default");
                         t.setBusinessName("Default Business");
                         t.setType(Tenant.BusinessType.RETAIL);
+                        t.setActive(true); // ✅ NUEVO
 
                         TenantConfig config = new TenantConfig();
                         config.setPrimaryColor("#3B82F6");
@@ -52,7 +51,7 @@ public class DataSeeder {
                         return tenantRepository.save(t);
                     });
 
-            // Crear admin si no existe
+            // ========== CREAR ADMIN DEL TENANT ==========
             if (userRepository.findByEmail("admin@admin.com").isEmpty()) {
                 User admin = new User();
                 admin.setName("Admin");
@@ -62,6 +61,18 @@ public class DataSeeder {
                 admin.setTenant(defaultTenant);
                 userRepository.save(admin);
                 System.out.println("✅ Admin user created: admin@admin.com / admin123");
+            }
+
+            // ========== ✅ CREAR SUPER ADMIN (NUEVO) ==========
+            if (userRepository.findByEmail("superadmin@platform.com").isEmpty()) {
+                User superAdmin = new User();
+                superAdmin.setName("Super Admin");
+                superAdmin.setEmail("superadmin@platform.com");
+                superAdmin.setPassword(passwordEncoder.encode("superadmin123"));
+                superAdmin.setRole(Role.SUPER_ADMIN);
+                superAdmin.setTenant(defaultTenant); // Asociado al tenant default
+                userRepository.save(superAdmin);
+                System.out.println("✅ Super Admin created: superadmin@platform.com / superadmin123");
             }
         };
     }

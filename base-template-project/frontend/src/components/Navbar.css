@@ -140,6 +140,15 @@
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
+.navbar-superadmin {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.navbar-superadmin:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+
 /* ========== Responsive ========== */
 @media (max-width: 768px) {
     .navbar-container {
