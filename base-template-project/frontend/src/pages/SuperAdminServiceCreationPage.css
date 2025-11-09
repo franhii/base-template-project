@@ -1,0 +1,254 @@
+/**********************************************
+ * SUPER ADMIN - CREAR SERVICIO
+ **********************************************/
+
+/* === Page Layout === */
+.sa-service-page {
+    min-height: 100vh;
+    background: #f5f7fa;
+    padding: 40px 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.sa-service-container {
+    width: 100%;
+    max-width: 950px;
+    background: white;
+    border-radius: 16px;
+    padding: 40px 50px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+/* === Header === */
+.sa-service-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 35px;
+}
+
+.sa-service-header h1 {
+    font-size: 1.9rem;
+    color: #1e293b;
+    margin: 0;
+}
+
+.btn-back {
+    background: #e2e8f0;
+    color: #1e293b;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-back:hover {
+    background: #cbd5e1;
+}
+
+/* === Loading State === */
+.sa-loading {
+    text-align: center;
+    margin-top: 100px;
+    font-size: 1.2rem;
+    color: #475569;
+}
+
+/* === No Tenants Message === */
+.no-tenants-message {
+    text-align: center;
+    background: #fff7ed;
+    border: 2px dashed #f59e0b;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+}
+
+.no-tenants-message p {
+    margin: 0;
+    color: #92400e;
+    font-weight: 500;
+}
+
+.no-tenants-message .hint {
+    font-size: 0.9em;
+    color: #b45309;
+}
+
+/* === Form General === */
+.sa-service-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.form-section {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 8px;
+}
+
+.form-label.required::after {
+    content: ' *';
+    color: #ef4444;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1em;
+    color: #1e293b;
+    background: white;
+    transition: border-color 0.2s ease;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+    border-color: #6366f1;
+    outline: none;
+}
+
+.form-hint {
+    font-size: 0.85em;
+    color: #64748b;
+    margin-top: 6px;
+}
+
+/* === Grid Rows === */
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/* === Checkbox === */
+.checkbox-group {
+    margin-top: 10px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #334155;
+}
+
+.checkbox-input {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+/* === Booking Config === */
+.booking-config {
+    background: #f9fafb;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 25px;
+}
+
+.booking-title {
+    font-size: 1.15rem;
+    color: #1e293b;
+    margin-bottom: 20px;
+}
+
+.days-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.day-btn {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #475569;
+    transition: all 0.2s ease;
+}
+
+.day-btn:hover {
+    border-color: #6366f1;
+    color: #4f46e5;
+}
+
+.day-btn.active {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: white;
+    border-color: #6366f1;
+}
+
+.booking-hint {
+    display: block;
+    margin-top: 10px;
+    color: #64748b;
+    font-size: 0.9em;
+}
+
+/* === Submit Button === */
+.btn-submit {
+    margin-top: 25px;
+    padding: 16px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: white;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.btn-submit:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.btn-submit:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* === Responsive === */
+@media (max-width: 600px) {
+    .sa-service-container {
+        padding: 25px 20px;
+    }
+
+    .sa-service-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .btn-back {
+        width: 100%;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}

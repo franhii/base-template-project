@@ -4,6 +4,7 @@ import com.example.core.security.JwtAuthenticationFilter;
 import com.example.core.service.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -75,7 +76,8 @@ public class SecurityConfig {
                 "Accept",
                 "Origin",
                 "Access-Control-Request-Method",
-                "Access-Control-Request-Headers"
+                "Access-Control-Request-Headers",
+                "X-Tenant-Subdomain" //TODO SOLO PARA DESA?
         ));
 
         // Headers expuestos al cliente
@@ -98,32 +100,28 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // ✅ HABILITAR CORS
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-                // Deshabilitar CSRF (necesario para APIs REST)
                 .csrf(csrf -> csrf.disable())
-
-                // Sesiones stateless (JWT)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // Configuración de autorización
                 .authorizeHttpRequests(auth -> auth
                         // Endpoints públicos
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/items/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/items/**").permitAll() // ✅ GET público
                         .requestMatchers("/api/config/current").permitAll()
                         .requestMatchers("/api/payments/**").permitAll()
 
                         // Swagger UI
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
+                        // ✅ POST/PUT/DELETE de items requiere ADMIN o VENDEDOR
+                        .requestMatchers(HttpMethod.POST, "/api/items/**").hasAnyRole("ADMIN", "VENDEDOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/items/**").hasAnyRole("ADMIN", "VENDEDOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/items/**").hasAnyRole("ADMIN", "VENDEDOR")
+
                         // Todos los demás requieren autenticación
                         .anyRequest().authenticated()
                 )
-
-                // Agregar filtro JWT
                 .addFilterBefore(jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class);
 

@@ -207,6 +207,7 @@ export function ManageItemsPage() {
                 payload.slotIntervalMinutes = parseInt(serviceData.slotIntervalMinutes);
             }
 
+            // ✅ CAMBIO AQUÍ: Usar el endpoint correcto
             await api.post('/api/items/services', payload);
 
             setToast({ message: 'Servicio creado exitosamente', type: 'success' });
@@ -232,7 +233,10 @@ export function ManageItemsPage() {
             setTimeout(() => setSuccess(''), 3000);
         } catch (err) {
             console.error('Error creating service:', err);
-            setToast({ message: 'Error al crear: ' + (err.response?.data?.message || err.message), type: 'error' });
+            const errorMsg = err.response?.data?.message ||
+                err.response?.data?.error ||
+                'Error al crear el servicio';
+            setToast({ message: errorMsg, type: 'error' });
             setTimeout(() => setToast(null), 3000);
         } finally {
             setLoading(false);

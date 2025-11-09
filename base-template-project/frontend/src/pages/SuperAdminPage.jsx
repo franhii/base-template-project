@@ -133,9 +133,19 @@ export default function SuperAdminPage() {
             <main className="super-admin-main">
                 <div className="tenants-header">
                     <h2>Gestión de Tenants ({tenants.length})</h2>
-                    <button className="btn-refresh" onClick={loadTenants}>
-                        🔄 Actualizar
-                    </button>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                        {/* ✅ NUEVO BOTÓN */}
+                        <button
+                            className="btn-create-service"
+                            onClick={() => navigate('/super-admin/create-service')}
+                        >
+                            ➕ Crear Servicio
+                        </button>
+
+                        <button className="btn-refresh" onClick={loadTenants}>
+                            🔄 Actualizar
+                        </button>
+                    </div>
                 </div>
 
                 {/* Tenants Table */}

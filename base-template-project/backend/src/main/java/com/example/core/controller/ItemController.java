@@ -114,6 +114,31 @@ public class ItemController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // ❌ REMOVIDO: createService
-    // Ahora solo el SUPER_ADMIN puede crear servicios desde /api/super-admin/services
+    @PostMapping("/services")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
+    public ResponseEntity<ServiceDTO> createService(
+            @RequestBody ServiceDTO dto,
+            Authentication authentication) {
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Tenant tenant = user.getTenant();
+
+        // Validar que el tenant tenga servicios habilitados
+        if (tenant.getConfig() == null ||
+                tenant.getConfig().getFeatures() == null ||
+                !tenant.getConfig().getFeatures().isServices()) {
+            return ResponseEntity.badRequest()
+                    .body(null); // O un DTO de error apropiado
+        }
+
+        ServiceItem service = itemMapper.fromServiceDTO(dto);
+        service.setTenant(tenant);
+        service.setActive(true);
+
+        service = serviceRepository.save(service);
+        return ResponseEntity.ok(itemMapper.toServiceDTO(service));
+    }
 }
