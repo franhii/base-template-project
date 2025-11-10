@@ -25,15 +25,18 @@ public class TenantInterceptor implements HandlerInterceptor {
                              HttpServletResponse response,
                              Object handler) throws IOException {
 
-        String subdomain = extractSubdomain(request);
-        System.out.println("🔍 TenantInterceptor - Subdomain extraído: " + subdomain);
+        // 🔥 NUEVO: Priorizar el header X-Tenant-Subdomain
+        String subdomain = request.getHeader("X-Tenant-Subdomain");
+        System.out.println("🔍 TenantInterceptor - Header X-Tenant-Subdomain: " + subdomain);
 
-        if (subdomain == null || subdomain.equals("localhost")) {
-            subdomain = request.getHeader("X-Tenant-Subdomain");
-            System.out.println("🔍 TenantInterceptor - Header X-Tenant-Subdomain: " + subdomain);
+        // Si no hay header, extraer del dominio
+        if (subdomain == null || subdomain.isEmpty()) {
+            subdomain = extractSubdomain(request);
+            System.out.println("🔍 TenantInterceptor - Subdomain del host: " + subdomain);
         }
 
-        if (subdomain == null) {
+        // Fallback a default
+        if (subdomain == null || subdomain.isEmpty()) {
             subdomain = "default";
         }
 
@@ -45,7 +48,6 @@ public class TenantInterceptor implements HandlerInterceptor {
 
         System.out.println("🏢 TenantInterceptor - Tenant encontrado: " + tenant.getBusinessName() + " (ID: " + tenant.getId() + ")");
 
-        // ✅ NUEVO: Bloquear acceso si el tenant está suspendido
         if (!tenant.isActive()) {
             System.out.println("⛔ Tenant suspendido: " + tenant.getBusinessName());
             response.setStatus(HttpStatus.FORBIDDEN.value());
@@ -53,13 +55,14 @@ public class TenantInterceptor implements HandlerInterceptor {
             response.getWriter().write(
                     "{\"error\": \"Tenant suspendido\", \"message\": \"Este negocio está temporalmente inactivo. Contacte al soporte.\"}"
             );
-            return false; // Bloquear la request
+            return false;
         }
 
         TenantContext.setCurrentTenant(tenant.getId());
-
         return true;
     }
+
+
 
     @Override
     public void afterCompletion(HttpServletRequest request,
@@ -70,15 +73,15 @@ public class TenantInterceptor implements HandlerInterceptor {
     }
 
     private String extractSubdomain(HttpServletRequest request) {
-        String host = request.getServerName(); // ej: "subdominio.tuapp.com"
+        String host = request.getServerName();
 
         if (host.contains("localhost") || host.matches("\\d+\\.\\d+\\.\\d+\\.\\d+")) {
-            return "default"; // En local usar tenant por defecto
+            return null;
         }
 
         String[] parts = host.split("\\.");
         if (parts.length > 2) {
-            return parts[0]; // "subdominio"
+            return parts[0];
         }
 
         return "default";

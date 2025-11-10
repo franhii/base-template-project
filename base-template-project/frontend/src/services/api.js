@@ -10,6 +10,16 @@ const api = axios.create({
     },
 });
 
+// Función para setear el header del tenant
+export function setTenantHeader(subdomain) {
+    if (subdomain) {
+        api.defaults.headers.common['X-Tenant-Subdomain'] = subdomain;
+        console.log('✅ Header X-Tenant-Subdomain seteado:', subdomain);
+    } else {
+        delete api.defaults.headers.common['X-Tenant-Subdomain'];
+        console.log('❌ Header X-Tenant-Subdomain eliminado');
+    }
+}
 // Interceptor para agregar token JWT automáticamente
 api.interceptors.request.use(
     (config) => {

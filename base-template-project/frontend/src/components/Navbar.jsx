@@ -58,23 +58,31 @@ export default function Navbar({ user, setUser }) {
 
                     {user ? (
                         <>
-                            <Link to="/cart" className="navbar-link navbar-cart">
+                            {/* 🛒 Carrito - Para todos los usuarios autenticados */}
+                            <Link to="/cart" className="navbar-link navbar-cart" onClick={() => setMenuOpen(false)}>
                                 🛒 Carrito
                                 {getTotalItems() > 0 && (
                                     <span className="cart-badge">{getTotalItems()}</span>
                                 )}
                             </Link>
 
-                            {/* Admin/Vendedor */}
+                            {/* 👤 Mi Cuenta - Para CLIENTES */}
+                            {user.role === 'CLIENTE' && (
+                                <Link to="/my-account" className="navbar-link navbar-account" onClick={() => setMenuOpen(false)}>
+                                    👤 Mi Cuenta
+                                </Link>
+                            )}
+
+                            {/* 📊 Admin - Para ADMIN y VENDEDOR */}
                             {(user.role === 'ADMIN' || user.role === 'VENDEDOR') && (
-                                <Link to="/admin" className="navbar-link navbar-admin">
+                                <Link to="/admin" className="navbar-link navbar-admin" onClick={() => setMenuOpen(false)}>
                                     📊 Admin
                                 </Link>
                             )}
 
-                            {/* ✅ NUEVO: Super Admin */}
+                            {/* 🔐 Super Admin - Para SUPER_ADMIN */}
                             {user.role === 'SUPER_ADMIN' && (
-                                <Link to="/super-admin" className="navbar-link navbar-superadmin">
+                                <Link to="/super-admin" className="navbar-link navbar-superadmin" onClick={() => setMenuOpen(false)}>
                                     🔐 Super Admin
                                 </Link>
                             )}

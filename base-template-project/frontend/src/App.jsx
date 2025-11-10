@@ -13,8 +13,8 @@ import RegisterPage from './pages/RegisterPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import AdminPage from './pages/AdminPage';
-import SuperAdminPage from './pages/SuperAdminPage'; // ✅ NUEVO
-import MyAccountPage from './pages/MyAccountPage'; // ✅ NUEVO
+import SuperAdminPage from './pages/SuperAdminPage';
+import MyAccountPage from './pages/MyAccountPage'; // ✅ IMPORTAR
 import {ManageItemsPage} from './pages/ManageItemsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import SuccessPage from './pages/SuccessPage';
@@ -127,7 +127,7 @@ export default function App() {
         return element;
     };
 
-    // ✅ NUEVO: SuperAdminRoute - Solo SUPER_ADMIN
+    // SuperAdminRoute - Solo SUPER_ADMIN
     const SuperAdminRoute = ({ element }) => {
         if (loading) return <div className="app-loading"><div className="spinner"></div><p>Cargando...</p></div>;
         if (!user) return <Navigate to="/login" />;
@@ -180,11 +180,14 @@ export default function App() {
                             <Route path="/cart" element={<ProtectedRoute element={<CartPage />} />} />
                             <Route path="/checkout" element={<ProtectedRoute element={<CheckoutPage />} />} />
 
+                            {/* ✅ NUEVO: Ruta Mi Cuenta */}
+                            <Route path="/my-account" element={<ProtectedRoute element={<MyAccountPage />} />} />
+
                             {/* Rutas Protegidas - Admin/Vendedor */}
                             <Route path="/admin" element={<AdminRoute element={<AdminPage />} />} />
                             <Route path="/admin/manage-items" element={<AdminRoute element={<ManageItemsPage />} />} />
 
-                            {/* ✅ NUEVO: Ruta Super Admin */}
+                            {/* Ruta Super Admin */}
                             <Route path="/super-admin" element={<SuperAdminRoute element={<SuperAdminPage />} />} />
 
                             {/* 404 */}
