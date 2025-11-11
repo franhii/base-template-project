@@ -482,7 +482,7 @@ Admin: admin@admin.com / admin123
 ## 🔗 LINKS IMPORTANTES
 
 - **Chat anterior**: https://claude.ai/chat/f052be26-377a-40ee-a877-08cfae28a7b3
-- **Repo Git**: [Agregar cuando esté en GitHub]
+- **Repo Git**: https://github.com/franhii/base-template-project
 - **Docs MP**: https://www.mercadopago.com.ar/developers/es/docs
 
 ---
