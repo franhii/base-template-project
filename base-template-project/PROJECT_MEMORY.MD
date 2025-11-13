@@ -339,215 +339,83 @@ ShippingSelector → Selector de opciones de envío (pendiente frontend)
 ---
 
 ## 🔄 FLUJOS CRÍTICOS
-
-### Flujo de Compra con Envío (Producto Físico)
-1. Cliente agrega al carrito → Valida stock
-2. Checkout → Selecciona/crea dirección
-3. Frontend llama `/api/shipping/quote` → Muestra opciones de MercadoEnvíos
-4. Cliente elige método de envío (estándar, express, etc.)
-5. Checkout → Selecciona método pago + notas
-6. Crea orden → Valida dirección + método envío + Descuenta stock
-7. OrderService calcula costo con MercadoEnvíos
-8. Crea payment → Genera preferencia MP
-9. Redirige a MP → Usuario paga
-10. Webhook MP → Actualiza payment + order a CONFIRMED
-11. Actualiza shippingStatus a "ready_to_ship"
-12. Success page → Limpia carrito
-
-### Flujo de Reserva (Servicio con Booking)
-1. Cliente ve servicio → Click "Reservar"
-2. BookingModal → Selecciona fecha + slot disponible
-3. Agrega al carrito con bookingDate + bookingTime
-4. Checkout → Elige pickup o delivery
-5. Si delivery → Selecciona dirección + método envío
-6. Crea orden + OrderItem con booking data
-7. OrderService → Crea Booking (status PENDING)
-8. Pago confirmado → PaymentService.confirmOrderBookings() → Booking a CONFIRMED
-
-### Flujo de Cancelación
-**Orden**:
-1. Cliente/Admin cancela orden
-2. OrderService.cancelOrder() → Restaura stock de productos físicos
-3. Order.status = CANCELLED
-4. Si tiene envío, shippingStatus = "cancelled"
-
-**Booking**:
-1. Cliente cancela reserva (validación 24hs antes)
-2. BookingService.cancelBooking() → Booking.status = CANCELLED
-3. Si hay orden asociada, considerar cancelar orden completa
-
-**Pago Rechazado (MP o Manual)**:
-1. Webhook MP status=rejected O Admin rechaza manual
-2. PaymentService → Payment.status = REJECTED
-3. OrderService.restoreStock() → Devuelve stock
-4. Order.status = CANCELLED
-5. BookingService.cancelOrderBookings() → Cancela reservas
-
-### Multi-Tenant Testing Local
-```javascript
-// frontend/src/App.jsx (en desarrollo)
-api.defaults.headers.common['X-Tenant-Subdomain'] = 'beauty-test';
-
-// O modificar /etc/hosts:
-// 127.0.0.1 beauty-test.localhost
-```
-
----
-
-## 🚀 DEPLOYMENT & ENV VARS
-
-### Backend (.env.local)
-```properties
-SPRING_PROFILES_ACTIVE=local
-PGHOST=localhost
-PGPORT=5432
-PGDATABASE=coredb
-PGUSER=postgres
-PGPASSWORD=admin
-APP_JWT_SECRET=desarrollo-local-32-caracteres-minimo-muy-seguro
-APP_JWT_EXP_MS=86400000
-PORT=8080
-MERCADOPAGO_ACCESS_TOKEN=xxx
-MERCADOPAGO_PUBLIC_KEY=xxx
-MERCADOPAGO_WEBHOOK_SECRET=xxx
-MERCADOPAGO_WEBHOOK_URL=https://xxx.ngrok.io/api/payments/webhook/mercadopago
-MERCADOPAGO_SUCCESS_URL=http://localhost:5173/success
-MERCADOPAGO_FAILURE_URL=http://localhost:5173/failure
-MERCADOPAGO_PENDING_URL=http://localhost:5173/pending
-```
-
-### Frontend
-```bash
-VITE_API_URL=http://localhost:8080
-```
-
-### Usuarios de Testing
-```
-Super Admin: superadmin@platform.com / superadmin123
-Admin: admin@admin.com / admin123
-```
-
----
-
-## ✅ FEATURES COMPLETADAS
-
-### Core
-- [x] Sistema multi-tenant completo
-- [x] Autenticación JWT + roles
-- [x] CRUD productos/servicios
-- [x] Sistema de carrito (Context + localStorage)
-- [x] Checkout + creación órdenes
-- [x] Gestión de stock (descuento + restauración)
-
-### Direcciones & GeoRef (NUEVO - Sesión 2025-11-12)
-- [x] Modelo Address con campos normalizados
-- [x] CRUD completo de direcciones
-- [x] Integración con GeoRef API (Argentina)
-- [x] Autocompletar provincias, municipios, localidades
-- [x] Validación de código postal (4 dígitos)
-- [x] Gestión de dirección por defecto automática
-- [x] Coordenadas GPS opcionales
-
-### MercadoEnvíos (NUEVO - Sesión 2025-11-12)
-- [x] Integración completa con API de MercadoEnvíos
-- [x] Cotización de envío en tiempo real
-- [x] Múltiples opciones (estándar, express, sucursal)
-- [x] Cálculo automático de costos
-- [x] Tiempo estimado de entrega
-- [x] Validación de disponibilidad por CP
-- [x] Integración en OrderService
-- [x] Campos de shipping en Order
-- [x] Estados de envío (pending, ready_to_ship, etc.)
-
-### Booking
-- [x] Servicios con reserva
-- [x] Disponibilidad configurable (días, horarios, slots)
-- [x] Modal de selección de turnos
-- [x] Validación de conflictos
-- [x] Cancelación con restricción 24hs
-
-### Payments
-- [x] Integración MercadoPago (preferencias + webhooks)
-- [x] Pagos manuales (transferencia + comprobante)
-- [x] Aprobación/rechazo manual (admin)
-- [x] Restauración de stock en fallos
-- [x] Páginas de resultado (success/failure/pending)
-
-### Admin
-- [x] Dashboard con KPIs (Recharts)
-- [x] Ventas diarias (chart)
-- [x] Top productos
-- [x] Pagos pendientes de revisión
-- [x] Distribución métodos de pago
-- [x] Gestión de usuarios
-
-### Super Admin
-- [x] Panel de gestión de tenants
-- [x] Activar/Suspender tenants
-- [x] Editar configuración de tenants
-- [x] Crear servicios para tenants específicos
-
-### Cliente
-- [x] Panel "Mi Cuenta" (Overview, Órdenes, Reservas, Perfil)
-- [x] Ver historial de compras
-- [x] Ver reservas próximas/pasadas
-- [x] Cancelar reservas (24hs)
-- [x] Editar perfil (nombre, teléfono)
-
 ---
 
 ## 🔄 PENDIENTE (TODO.md - Priorizado)
 
-### 🔥 Prioridad Alta (Siguiente Sesión)
+### 🔥 Prioridad Alta (Siguiente Sesión - 2025-11-13)
 
-1. **Frontend - Sistema de Direcciones**
-   - [ ] AddressManager component en Mi Cuenta
-   - [ ] AddressForm con dropdowns de GeoRef
-   - [ ] Autocompletar provincias → municipios → localidades
-   - [ ] Selector de dirección en Checkout
-   - [ ] Validación de campos obligatorios
+**OBJETIVO**: Completar frontend de Direcciones y Envío
 
-2. **Frontend - Sistema de Envío**
-   - [ ] ShippingSelector component
-   - [ ] Llamada a `/api/shipping/quote` en Checkout
-   - [ ] Mostrar opciones de MercadoEnvíos
-   - [ ] Destacar envío gratis (si aplica)
-   - [ ] Mostrar tiempo estimado de entrega
-   - [ ] Toggle Delivery / Pickup en local
+1. **AddressForm.jsx** (NUEVO)
+    - [ ] Modal/Form con campos de dirección
+    - [ ] Integración con GeoRef API (provinces, municipalities, localities)
+    - [ ] Autocompletado en cascada (Provincia → Municipio → Localidad)
+    - [ ] Validación CP 4 dígitos
+    - [ ] Checkbox "Marcar como default"
+    - [ ] Modos: create/edit
 
-3. **Testing completo flujo MercadoEnvíos**
-   - [ ] Testear cotización con diferentes CPs
-   - [ ] Verificar opciones de envío
-   - [ ] Validar creación de orden con shipping
-   - [ ] Probar con envío gratis
+2. **AddressManager.jsx** (NUEVO)
+    - [ ] Listar direcciones del usuario
+    - [ ] Card por dirección con badge "Default"
+    - [ ] Botones: Editar, Eliminar, Set Default
+    - [ ] Botón "Agregar Dirección" → Abre AddressForm
+    - [ ] Empty state si no hay direcciones
+    - [ ] ConfirmModal para eliminación
+
+3. **ShippingSelector.jsx** (NUEVO)
+    - [ ] Radio: "Retiro en local" / "Envío a domicilio"
+    - [ ] Si delivery: Selector de dirección existente
+    - [ ] Botón "Agregar nueva dirección"
+    - [ ] POST /api/shipping/quote al seleccionar dirección
+    - [ ] Mostrar opciones MercadoEnvíos con precios
+    - [ ] Badge "GRATIS" si cost = 0
+    - [ ] Radio buttons para elegir opción de envío
+    - [ ] Actualizar total del checkout
+
+4. **MyAccountPage.jsx** (MODIFICAR)
+    - [ ] Agregar tab "📍 Direcciones"
+    - [ ] Renderizar <AddressManager /> en el tab
+
+5. **CheckoutPage.jsx** (MODIFICAR)
+    - [ ] Agregar estados: deliveryType, selectedAddress, shippingOptions, selectedShipping, deliveryCost
+    - [ ] Integrar <ShippingSelector />
+    - [ ] Calcular totalWithShipping
+    - [ ] Enviar isDelivery, deliveryAddressId, shippingMethodId en orderData
+
+6. **Testing E2E**
+    - [ ] Flujo: Crear dirección → Cotizar envío → Comprar con delivery
+    - [ ] Flujo: Retiro en local (sin envío)
+    - [ ] Validar que Order se cree con shipping data
+    - [ ] Verificar total incluye deliveryCost
 
 ### 📋 Prioridad Media
 
-4. **Tracking de Envíos**
-   - [ ] Crear shipment en MercadoEnvíos después del pago
-   - [ ] Guardar shipmentId en Order
-   - [ ] Endpoint GET /api/orders/{id}/tracking
-   - [ ] Frontend: Mostrar estado de envío
+7. **Tracking de Envíos** (Futuro)
+    - [ ] Crear shipment en MercadoEnvíos post-pago
+    - [ ] Guardar shipmentId en Order
+    - [ ] Endpoint GET /api/orders/{id}/tracking
+    - [ ] Frontend: Mostrar estado de envío en "Mis Órdenes"
 
-5. **WhatsApp Floating Button**
-   - [ ] Botón flotante esquina inferior derecha
-   - [ ] Número configurable en TenantConfig
-   - [ ] Link directo wa.me
+8. **WhatsApp Floating Button**
+    - [ ] Botón flotante esquina inferior derecha
+    - [ ] Número configurable en TenantConfig
+    - [ ] Link directo wa.me
 
-6. **Google OAuth Login**
-   - [ ] Login con Google
-   - [ ] Auto-registro si no existe
-   - [ ] Mantener JWT existente
+9. **Google OAuth Login**
+    - [ ] Login con Google
+    - [ ] Auto-registro si no existe
+    - [ ] Mantener JWT existente
 
-### 🔧 Refactoring
-- [ ] Agregar soft-delete
-- [ ] Cache configuración tenants
-- [ ] Índices BD para performance
+### 🔧 Refactoring & Performance
+- [ ] Agregar soft-delete a entidades críticas
+- [ ] Cache configuración tenants (Redis)
+- [ ] Índices BD para performance (Address por user/tenant)
 - [ ] Rate limiting endpoints públicos
 - [ ] Logging estructurado (SLF4J)
 
 ### 🐛 Bugs Conocidos
-- [ ] Validar webhooks MP en producción
+- [ ] Validar webhooks MP en producción (ngrok → dominio real)
 - [ ] Manejo de timezones en bookings
 - [ ] Validar emails únicos por tenant
 
@@ -556,10 +424,9 @@ Admin: admin@admin.com / admin123
 ## 📝 DECISIONES TÉCNICAS IMPORTANTES
 
 ### ¿Por qué GeoRef API en lugar de campos libres?
-- API oficial del gobierno argentino (gratis)
-- Datos normalizados y actualizados
+- API oficial del gobierno argentino (gratis, datos actualizados)
 - IDs oficiales de provincias/municipios
-- Mejor experiencia de usuario (autocomplete)
+- Mejor UX con autocomplete
 - Preparado para validaciones de CP
 
 ### ¿Por qué MercadoEnvíos en lugar de Andreani/OCA directo?
@@ -602,9 +469,9 @@ Admin: admin@admin.com / admin123
 ## 🔗 LINKS IMPORTANTES
 
 - **Chat anteriores**:
-   - https://claude.ai/chat/f73e801d-c1ea-45ee-8a89-e517c03886ee
-   - https://claude.ai/chat/f052be26-377a-40ee-a877-08cfae28a7b3
-   - https://claude.ai/chat/[SESIÓN_ACTUAL_2025-11-12]
+    - https://claude.ai/chat/f73e801d-c1ea-45ee-8a89-e517c03886ee (Sesión 1)
+    - https://claude.ai/chat/f052be26-377a-40ee-a877-08cfae28a7b3 (Sesión 2)
+    - [SESIÓN_ACTUAL_2025-11-12] (Sesión 3 - Backend Direcciones + MercadoEnvíos)
 - **Repo Git**: https://github.com/franhii/base-template-project
 - **Docs MP**: https://www.mercadopago.com.ar/developers/es/docs
 - **GeoRef API**: https://apis.datos.gob.ar/georef/api/
@@ -614,31 +481,33 @@ Admin: admin@admin.com / admin123
 
 ## 📊 MÉTRICAS DEL PROYECTO
 
-- **Backend**: ~85 archivos Java (+15 esta sesión)
-- **Frontend**: ~40 archivos JSX/CSS
-- **Total LOC**: ~18,000 (estimado)
-- **Endpoints**: ~60 (+10 esta sesión)
-- **Entidades**: 11 principales (+1 Address)
-- **Tiempo desarrollo**: ~5-6 sesiones
+- **Backend**: ~100 archivos Java
+- **Frontend**: ~45 archivos JSX/CSS (estimado con nuevos componentes)
+- **Total LOC**: ~20,000 (estimado)
+- **Endpoints**: ~70
+- **Entidades**: 12 principales
+- **Tiempo desarrollo**: 3 sesiones intensivas
 
 ---
 
-## 🎯 PRÓXIMA SESIÓN
+## 🎯 PRÓXIMA SESIÓN (2025-11-13)
 
-**Objetivo**: Frontend de Direcciones y Envíos
-**Archivos necesarios**:
-- MyAccountPage.jsx (agregar tab Direcciones)
-- AddressManager.jsx (nuevo)
-- AddressForm.jsx (nuevo)
-- CheckoutPage.jsx (agregar selector envío)
-- ShippingSelector.jsx (nuevo)
+**Objetivo**: Frontend completo de Direcciones y Envío
+**Archivos a crear**:
+- AddressForm.jsx + CSS
+- AddressManager.jsx + CSS
+- ShippingSelector.jsx + CSS
+
+**Archivos a modificar**:
+- MyAccountPage.jsx (agregar tab)
+- CheckoutPage.jsx (integrar shipping)
 
 **Resultado esperado**:
-- CRUD de direcciones funcional en frontend
-- Autocompletar con GeoRef en formulario
-- Cotización de envío en tiempo real
-- Selector de opciones de MercadoEnvíos
-- Integración completa checkout → envío → pago
+- Usuario puede gestionar direcciones en "Mi Cuenta"
+- Checkout con selector de envío funcional
+- Cotización en tiempo real con MercadoEnvíos
+- Compra completa con delivery/pickup
+- Testing E2E exitoso del flujo
 
 ---
 
