@@ -48,13 +48,48 @@ public class Order {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "delivery_address_id")
+    private Address deliveryAddress;
+
+    @Column(name = "delivery_cost")
+    private BigDecimal deliveryCost;
+
+    @Column(name = "is_delivery")
+    private boolean isDelivery;
+
+    @Column(name = "delivery_notes")
+    private String deliveryNotes;
+
+    // Nuevo para MercadoEnvíos
+    @Column(name = "shipping_method_id")
+    private Long shippingMethodId; // ID del método de envío de ML
+
+    @Column(name = "shipment_id")
+    private String shipmentId; // ID del envío en MercadoLibre (tracking)
+
+    // Métodos helper
+    public BigDecimal getTotalWithDelivery() {
+        if (deliveryCost == null) {
+            return total;
+        }
+        return total.add(deliveryCost);
+    }
+
+    public boolean isFreeDelivery() {
+        return isDelivery &&
+                deliveryCost != null &&
+                deliveryCost.compareTo(BigDecimal.ZERO) == 0;
+    }
+
     public enum OrderStatus {
         PENDING,      // Pendiente de pago
         CONFIRMED,    // Confirmada y pagada
         PREPARING,    // En preparación
         READY,        // Lista para entrega/retiro
         COMPLETED,    // Completada
-        CANCELLED     // Cancelada
+        CANCELLED,     // Cancelada
+        PICKUP_READY // Lista para retiro en tienda
     }
 
     public enum PaymentMethod {

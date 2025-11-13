@@ -1,8 +1,12 @@
 package com.example.core.service;
 
 import com.example.core.dto.CreateOrderRequest;
+import com.example.core.dto.ShippingCalculationRequest;
+import com.example.core.dto.ShippingOptionDTO;
+import com.example.core.exception.ResourceNotFoundException;
 import com.example.core.model.*;
 import com.example.core.repository.*;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -15,29 +19,33 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class OrderService {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
     private final OrderRepository orderRepository;
-    private final OrderItemRepository orderItemRepository;
+    private final MercadoEnviosService mercadoEnviosService;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final ServiceRepository serviceRepository;
     private final BookingRepository bookingRepository;
+    private final AddressRepository addressRepository;
 
     public OrderService(OrderRepository orderRepository,
-                        OrderItemRepository orderItemRepository,
+                        MercadoEnviosService mercadoEnviosService,
                         UserRepository userRepository,
                         ProductRepository productRepository,
                         ServiceRepository serviceRepository,
-                        BookingRepository bookingRepository) {
+                        BookingRepository bookingRepository,
+                        AddressRepository addressRepository) {
         this.orderRepository = orderRepository;
-        this.orderItemRepository = orderItemRepository;
+        this.mercadoEnviosService = mercadoEnviosService;
         this.userRepository = userRepository;
         this.productRepository = productRepository;
         this.serviceRepository = serviceRepository;
         this.bookingRepository = bookingRepository;
+        this.addressRepository = addressRepository;
     }
 
     @Transactional
@@ -160,6 +168,70 @@ public class OrderService {
                 }
             }
         }
+        // ========== PROCESAR ENVÍO ==========
+        if (request.getIsDelivery()) {
+
+            // Validar que se haya enviado dirección
+            if (request.getDeliveryAddressId() == null || request.getDeliveryAddressId().isBlank()) {
+                throw new IllegalArgumentException("Se requiere una dirección para delivery");
+            }
+
+            // Validar que se haya seleccionado método de envío
+            if (request.getShippingMethodId() == null) {
+                throw new IllegalArgumentException("Se requiere seleccionar un método de envío");
+            }
+
+            // Obtener dirección del usuario
+            Address deliveryAddress = addressRepository.findByIdAndUserIdAndTenantId(
+                            request.getDeliveryAddressId(),
+                            user.getId(),
+                            user.getTenant().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Dirección no encontrada"));
+
+            // Obtener CP del tenant (origen)
+            String zipCodeFrom = getTenantPostalCode(user.getTenant());
+            if (zipCodeFrom == null) {
+                throw new IllegalArgumentException("El negocio no tiene código postal configurado");
+            }
+
+            // Cotizar envío para validar el método seleccionado
+            ShippingCalculationRequest shippingRequest = ShippingCalculationRequest.builder()
+                    .zipCodeFrom(zipCodeFrom)
+                    .zipCodeTo(deliveryAddress.getPostalCode())
+                    .dimensions("20x20x10,1000") // TODO: Hacer configurable por tenant
+                    .listCost(total)
+                    .freeShipping(false)
+                    .build();
+
+            ShippingOptionDTO selectedOption = mercadoEnviosService.findShippingOption(
+                    shippingRequest,
+                    request.getShippingMethodId());
+
+            // Configurar datos de envío en la orden
+            order.setDeliveryAddress(deliveryAddress);
+            order.setDeliveryCost(selectedOption.getCost());
+            order.setDelivery(true);
+            order.setDeliveryNotes(request.getDeliveryNotes());
+            order.setShippingMethodId(selectedOption.getShippingMethodId());
+            order.setStatus(Order.OrderStatus.PREPARING); // Pendiente hasta que se confirme el pago
+
+            log.info("Envío configurado: {} (${}) para orden {}",
+                    selectedOption.getName(),
+                    selectedOption.getCost(),
+                    order.getId());
+
+        } else {
+            // Es retiro en local (pickup)
+            order.setDelivery(false);
+            order.setDeliveryCost(BigDecimal.ZERO);
+            order.setStatus(Order.OrderStatus.CANCELLED);
+
+            log.info("Orden configurada para retiro en local: {}", order.getId());
+        }
+
+        // Recalcular total incluyendo envío
+        BigDecimal totalWithShipping = order.getTotalWithDelivery();
+        order.setTotal(totalWithShipping);
 
         logger.info("✅ Orden creada: {} - Total: ${}", savedOrder.getId(), total);
         return savedOrder;
@@ -218,6 +290,41 @@ public class OrderService {
         logger.info("✅ Orden cancelada exitosamente");
 
         return savedOrder;
+    }
+
+
+
+    private String getTenantPostalCode(Tenant tenant) {
+        try {
+            // Opción 1: Si está directo en Tenant
+            // return tenant.getPostalCode();
+
+            // Opción 2: Si está en TenantConfig (JSONB)
+            Object config = tenant.getConfig();
+            if (config instanceof java.util.Map) {
+                return (String) ((java.util.Map<?, ?>) config).get("postalCode");
+            }
+            return null;
+        } catch (Exception e) {
+            log.error("Error obteniendo CP del tenant", e);
+            return null;
+        }
+    }
+
+    // ========== ACTUALIZAR ESTADO DE ENVÍO (cuando se confirma el pago) ==========
+
+    // En el método que confirma el pago (ej: después del webhook de MercadoPago)
+    public void updateShippingStatus(Order order) {
+        if (order.isDelivery() && order.getStatus().equals(Order.OrderStatus.PENDING)) {
+            order.setStatus(Order.OrderStatus.CONFIRMED);
+            orderRepository.save(order);
+
+            // TODO: Crear shipment en MercadoEnvíos si se necesita tracking
+            // String shipmentId = mercadoEnviosService.createShipment(order.getId(), order.getShippingMethodId());
+            // order.setShipmentId(shipmentId);
+
+            log.info("Estado de envío actualizado a ready_to_ship para orden {}", order.getId());
+        }
     }
 
     private Item findItem(String itemId) {

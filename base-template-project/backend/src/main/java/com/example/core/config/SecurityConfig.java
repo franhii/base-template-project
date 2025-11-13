@@ -110,6 +110,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/items/**").permitAll() // ✅ GET público
                         .requestMatchers("/api/config/current").permitAll()
                         .requestMatchers("/api/payments/**").permitAll()
+                        .requestMatchers("/api/georef/**").permitAll() // Para que el frontend pueda consultar sin auth
 
                         // Swagger UI
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()

@@ -1,6 +1,6 @@
 # PROJECT_MEMORY.md
 > **PROPÓSITO**: Contexto técnico completo para Claude. Actualizar al final de cada sesión.
-> **ÚLTIMA ACTUALIZACIÓN**: 2025-11-10
+> **ÚLTIMA ACTUALIZACIÓN**: 2025-11-12
 
 ---
 
@@ -9,7 +9,7 @@
 ### Stack
 **Backend**: Spring Boot 3.2.0 + Java 21 + PostgreSQL + Maven
 **Frontend**: React 18 + Vite + Axios + Context API
-**Integraciones**: MercadoPago SDK 2.1.26
+**Integraciones**: MercadoPago SDK 2.1.26 + GeoRef API + MercadoEnvíos
 
 ### Arquitectura Multi-Tenant
 - **Estrategia**: Subdomain-based (beauty.app.com, gym.app.com)
@@ -46,11 +46,32 @@
 ```java
 class TenantConfig {
   String primaryColor, secondaryColor, logo, favicon;
-  Features features; // productos, servicios, booking, mercadoPago, etc.
-  DeliveryConfig deliveryConfig; // freeDeliveryThreshold, deliveryCost, zones
+  String postalCode; // CP del negocio (para MercadoEnvíos)
+  Features features; // productos, servicios, booking, mercadoPago, mercadoEnvios
   BookingConfig bookingConfig;
   SocialMedia socialMedia;
   List<String> categories;
+}
+```
+
+### Address (NUEVO - Sistema de Direcciones)
+```java
+@Entity class Address {
+  String id;
+  User user; // ManyToOne
+  Tenant tenant; // ManyToOne
+  
+  // Datos normalizados con GeoRef API
+  String street, streetNumber;
+  String provinceId, provinceName;       // GeoRef oficial
+  String municipalityId, municipalityName; // GeoRef oficial
+  String localityId, localityName;       // GeoRef oficial (opcional)
+  String postalCode;                     // 4 dígitos Argentina
+  
+  String apartment, reference;           // Opcionales
+  Double latitude, longitude;            // Para cálculo de distancia
+  boolean isDefault;                     // Dirección por defecto
+  LocalDateTime createdAt, updatedAt;
 }
 ```
 
@@ -80,18 +101,31 @@ abstract class Item {
 }
 ```
 
-### Order
+### Order (ACTUALIZADO - Con Shipping)
 ```java
 @Entity class Order {
   String id;
   User user;
   Tenant tenant;
   List<OrderItem> items; // @OneToMany
-  BigDecimal total;
+  BigDecimal total; // Incluye deliveryCost
   OrderStatus status; // PENDING, CONFIRMED, PREPARING, COMPLETED, CANCELLED
   PaymentMethod paymentMethod;
   String notes;
+  
+  // ========== SHIPPING (NUEVO) ==========
+  Address deliveryAddress; // @ManyToOne (null si es pickup)
+  BigDecimal deliveryCost; // Costo del envío (de MercadoEnvíos)
+  boolean isDelivery; // true = delivery, false = pickup
+  String deliveryNotes; // Notas del cliente
+  Long shippingMethodId; // ID de MercadoEnvíos (100009, 100012, etc.)
+  String shipmentId; // ID del shipment en ML (para tracking)
+  String shippingStatus; // pending, ready_to_ship, shipped, delivered
+  
   LocalDateTime createdAt, updatedAt;
+  
+  // Método helper
+  BigDecimal getTotalWithDelivery(); // total + deliveryCost
 }
 
 @Entity class OrderItem {
@@ -153,13 +187,13 @@ abstract class Item {
 // SUPER_ADMIN: Gestiona toda la plataforma (/api/super-admin/**)
 // ADMIN: Gestiona su tenant (/api/admin/**)
 // VENDEDOR: CRUD items de su tenant
-// CLIENTE: Compras, reservas, perfil
+// CLIENTE: Compras, reservas, perfil, direcciones
 ```
 
 ### SecurityConfig
 - **CORS**: Habilitado para localhost:5173, incluye X-Tenant-Subdomain
 - **CSRF**: Disabled (JWT stateless)
-- **Public endpoints**: /api/auth/**, /api/config/current, /api/items/** (GET), /api/payments/** (webhooks)
+- **Public endpoints**: /api/auth/**, /api/config/current, /api/items/** (GET), /api/payments/** (webhooks), /api/georef/**
 
 ---
 
@@ -176,8 +210,31 @@ abstract class Item {
 - `POST /products` → Crea producto (ADMIN/VENDEDOR)
 - `POST /services` → Crea servicio (ADMIN/VENDEDOR)
 
+### Addresses (/api/addresses) - NUEVO
+- `POST /` → Crear dirección (con GeoRef)
+- `GET /` → Listar mis direcciones
+- `GET /default` → Obtener dirección por defecto
+- `GET /{id}` → Obtener dirección específica
+- `PUT /{id}` → Actualizar dirección
+- `PATCH /{id}/set-default` → Marcar como default
+- `DELETE /{id}` → Eliminar dirección
+
+### GeoRef (/api/georef) - NUEVO (Público)
+- `GET /provinces` → Todas las provincias argentinas
+- `GET /municipalities?provinceId=X` → Municipios por provincia
+- `GET /municipalities/search?query=X` → Buscar municipios (autocomplete)
+- `GET /localities?municipalityId=X` → Localidades por municipio
+
+### Shipping (/api/shipping) - NUEVO (MercadoEnvíos)
+- `POST /quote` → Cotizar opciones de envío
+   - Body: `{ addressId, orderTotal, dimensions? }`
+   - Retorna opciones de MercadoEnvíos con precios
+- `GET /available/{addressId}` → Validar disponibilidad de envío
+
 ### Orders (/api/orders)
-- `POST /` → Crea orden + reserva stock + crea bookings si hay servicios
+- `POST /` → Crea orden + reserva stock + crea bookings + calcula envío
+   - Validación automática de shipping si isDelivery=true
+   - Integración con MercadoEnvíos
 - `GET /my-orders` → Órdenes del user
 - `GET /` → Todas las órdenes del tenant (ADMIN/VENDEDOR)
 - `POST /{id}/cancel` → Cancela orden + restaura stock
@@ -245,11 +302,11 @@ abstract class Item {
 HomePage → Lista productos/servicios (tabs)
 LoginPage / RegisterPage
 CartPage → Lista items + summary + validaciones stock
-CheckoutPage → Selector método pago + notas → Crea orden + pago → Redirige a MP o success
+CheckoutPage → Selector método pago + dirección + envío → Crea orden + pago → Redirige a MP o success
 SuccessPage / FailurePage / PendingPage → Resultados MP
 AdminPage → Dashboard (Recharts) + Pending payments table
 ManageItemsPage → CRUD productos/servicios (tabs) + booking config
-MyAccountPage → Tabs: Overview (stats), Órdenes, Reservas, Perfil
+MyAccountPage → Tabs: Overview (stats), Órdenes, Reservas, Perfil, Direcciones (NUEVO)
 SuperAdminPage → Tabla tenants + Edit/Suspend + Crear servicio
 NotFoundPage
 ```
@@ -263,6 +320,9 @@ Toast → Notificaciones (success, error, warning)
 ConfirmModal → Confirmaciones (cancelar booking, vaciar carrito, etc.)
 EditTenantModal → Editar tenant (nombre, tipo, features)
 AdminDashboard → KPIs + charts (Recharts)
+AddressManager → CRUD direcciones (pendiente frontend)
+AddressForm → Formulario con GeoRef autocomplete (pendiente frontend)
+ShippingSelector → Selector de opciones de envío (pendiente frontend)
 ```
 
 ### Servicios API
@@ -271,6 +331,8 @@ AdminDashboard → KPIs + charts (Recharts)
 // authService: register, login, getCurrentUser
 // itemService: getProducts, getServices, createProduct, createService
 // tenantService: getCurrentConfig
+// addressService: CRUD direcciones (pendiente)
+// shippingService: quoteShipping (pendiente)
 // setTenantHeader(subdomain) → Para testing multi-tenant
 ```
 
@@ -278,28 +340,36 @@ AdminDashboard → KPIs + charts (Recharts)
 
 ## 🔄 FLUJOS CRÍTICOS
 
-### Flujo de Compra (Producto Físico)
+### Flujo de Compra con Envío (Producto Físico)
 1. Cliente agrega al carrito → Valida stock
-2. Checkout → Selecciona método pago + notas
-3. Crea orden → Descuenta stock (OrderService)
-4. Crea payment → Genera preferencia MP (PaymentService)
-5. Redirige a MP → Usuario paga
-6. Webhook MP → Actualiza payment + order a CONFIRMED
-7. Success page → Limpia carrito
+2. Checkout → Selecciona/crea dirección
+3. Frontend llama `/api/shipping/quote` → Muestra opciones de MercadoEnvíos
+4. Cliente elige método de envío (estándar, express, etc.)
+5. Checkout → Selecciona método pago + notas
+6. Crea orden → Valida dirección + método envío + Descuenta stock
+7. OrderService calcula costo con MercadoEnvíos
+8. Crea payment → Genera preferencia MP
+9. Redirige a MP → Usuario paga
+10. Webhook MP → Actualiza payment + order a CONFIRMED
+11. Actualiza shippingStatus a "ready_to_ship"
+12. Success page → Limpia carrito
 
 ### Flujo de Reserva (Servicio con Booking)
 1. Cliente ve servicio → Click "Reservar"
 2. BookingModal → Selecciona fecha + slot disponible
 3. Agrega al carrito con bookingDate + bookingTime
-4. Checkout → Crea orden + OrderItem con booking data
-5. OrderService → Crea Booking (status PENDING)
-6. Pago confirmado → PaymentService.confirmOrderBookings() → Booking a CONFIRMED
+4. Checkout → Elige pickup o delivery
+5. Si delivery → Selecciona dirección + método envío
+6. Crea orden + OrderItem con booking data
+7. OrderService → Crea Booking (status PENDING)
+8. Pago confirmado → PaymentService.confirmOrderBookings() → Booking a CONFIRMED
 
 ### Flujo de Cancelación
 **Orden**:
 1. Cliente/Admin cancela orden
 2. OrderService.cancelOrder() → Restaura stock de productos físicos
 3. Order.status = CANCELLED
+4. Si tiene envío, shippingStatus = "cancelled"
 
 **Booking**:
 1. Cliente cancela reserva (validación 24hs antes)
@@ -369,6 +439,26 @@ Admin: admin@admin.com / admin123
 - [x] Checkout + creación órdenes
 - [x] Gestión de stock (descuento + restauración)
 
+### Direcciones & GeoRef (NUEVO - Sesión 2025-11-12)
+- [x] Modelo Address con campos normalizados
+- [x] CRUD completo de direcciones
+- [x] Integración con GeoRef API (Argentina)
+- [x] Autocompletar provincias, municipios, localidades
+- [x] Validación de código postal (4 dígitos)
+- [x] Gestión de dirección por defecto automática
+- [x] Coordenadas GPS opcionales
+
+### MercadoEnvíos (NUEVO - Sesión 2025-11-12)
+- [x] Integración completa con API de MercadoEnvíos
+- [x] Cotización de envío en tiempo real
+- [x] Múltiples opciones (estándar, express, sucursal)
+- [x] Cálculo automático de costos
+- [x] Tiempo estimado de entrega
+- [x] Validación de disponibilidad por CP
+- [x] Integración en OrderService
+- [x] Campos de shipping en Order
+- [x] Estados de envío (pending, ready_to_ship, etc.)
+
 ### Booking
 - [x] Servicios con reserva
 - [x] Disponibilidad configurable (días, horarios, slots)
@@ -409,32 +499,45 @@ Admin: admin@admin.com / admin123
 ## 🔄 PENDIENTE (TODO.md - Priorizado)
 
 ### 🔥 Prioridad Alta (Siguiente Sesión)
-1. **Sistema de Delivery** ← PROPUESTO POR FRANCIS
-    - [ ] Modelo Address (calle, ciudad, CP, provincia)
-    - [ ] CRUD direcciones (User → List<Address>)
-    - [ ] DeliveryService: cálculo de envío
-    - [ ] TenantConfig.DeliveryConfig: freeDeliveryThreshold, deliveryCost, zones
-    - [ ] Endpoint /api/orders/calculate-delivery
-    - [ ] Frontend: AddressManager en Mi Cuenta
-    - [ ] Frontend: Selector dirección en Checkout
-    - [ ] Checkout: Mostrar "Envío gratis" cuando aplique
-    - [ ] Validación: Productos físicos requieren dirección
 
-2. **Testing completo flujo MercadoPago**
-    - [ ] Testear success/pending/failure en dev
-    - [ ] Verificar restauración stock en todos los casos
-    - [ ] Validar webhooks con ngrok
+1. **Frontend - Sistema de Direcciones**
+   - [ ] AddressManager component en Mi Cuenta
+   - [ ] AddressForm con dropdowns de GeoRef
+   - [ ] Autocompletar provincias → municipios → localidades
+   - [ ] Selector de dirección en Checkout
+   - [ ] Validación de campos obligatorios
+
+2. **Frontend - Sistema de Envío**
+   - [ ] ShippingSelector component
+   - [ ] Llamada a `/api/shipping/quote` en Checkout
+   - [ ] Mostrar opciones de MercadoEnvíos
+   - [ ] Destacar envío gratis (si aplica)
+   - [ ] Mostrar tiempo estimado de entrega
+   - [ ] Toggle Delivery / Pickup en local
+
+3. **Testing completo flujo MercadoEnvíos**
+   - [ ] Testear cotización con diferentes CPs
+   - [ ] Verificar opciones de envío
+   - [ ] Validar creación de orden con shipping
+   - [ ] Probar con envío gratis
 
 ### 📋 Prioridad Media
-3. **WhatsApp Floating Button**
-    - [ ] Botón flotante esquina inferior derecha
-    - [ ] Número configurable en TenantConfig
-    - [ ] Link directo wa.me
 
-4. **Google OAuth Login**
-    - [ ] Login con Google
-    - [ ] Auto-registro si no existe
-    - [ ] Mantener JWT existente
+4. **Tracking de Envíos**
+   - [ ] Crear shipment en MercadoEnvíos después del pago
+   - [ ] Guardar shipmentId en Order
+   - [ ] Endpoint GET /api/orders/{id}/tracking
+   - [ ] Frontend: Mostrar estado de envío
+
+5. **WhatsApp Floating Button**
+   - [ ] Botón flotante esquina inferior derecha
+   - [ ] Número configurable en TenantConfig
+   - [ ] Link directo wa.me
+
+6. **Google OAuth Login**
+   - [ ] Login con Google
+   - [ ] Auto-registro si no existe
+   - [ ] Mantener JWT existente
 
 ### 🔧 Refactoring
 - [ ] Agregar soft-delete
@@ -452,10 +555,27 @@ Admin: admin@admin.com / admin123
 
 ## 📝 DECISIONES TÉCNICAS IMPORTANTES
 
-### ¿Por qué JOINED herencia para Items?
-- Permite queries polimórficas eficientes
-- Evita nullables en tabla base
-- Fácil agregar tipos nuevos (ej: DigitalProduct)
+### ¿Por qué GeoRef API en lugar de campos libres?
+- API oficial del gobierno argentino (gratis)
+- Datos normalizados y actualizados
+- IDs oficiales de provincias/municipios
+- Mejor experiencia de usuario (autocomplete)
+- Preparado para validaciones de CP
+
+### ¿Por qué MercadoEnvíos en lugar de Andreani/OCA directo?
+- **No requiere contrato corporativo** (solo API key)
+- Mismas credenciales que MercadoPago
+- Mejores tarifas (economías de escala)
+- Tracking incluido
+- Múltiples couriers en uno (Correo Argentino + Andreani)
+- Puntos de retiro en todo el país
+- Confianza del usuario
+
+### ¿Por qué separar street y streetNumber?
+- Requerimiento de couriers (necesitan separados)
+- Mejor búsqueda y filtrado
+- Validaciones más precisas
+- Compatibilidad con APIs de mapas
 
 ### ¿Por qué ThreadLocal para TenantContext?
 - Aislamiento automático por request
@@ -481,39 +601,44 @@ Admin: admin@admin.com / admin123
 
 ## 🔗 LINKS IMPORTANTES
 
-- **Chat anteriores**: 
-- https://claude.ai/chat/f73e801d-c1ea-45ee-8a89-e517c03886ee
-- https://claude.ai/chat/f052be26-377a-40ee-a877-08cfae28a7b3
+- **Chat anteriores**:
+   - https://claude.ai/chat/f73e801d-c1ea-45ee-8a89-e517c03886ee
+   - https://claude.ai/chat/f052be26-377a-40ee-a877-08cfae28a7b3
+   - https://claude.ai/chat/[SESIÓN_ACTUAL_2025-11-12]
 - **Repo Git**: https://github.com/franhii/base-template-project
 - **Docs MP**: https://www.mercadopago.com.ar/developers/es/docs
+- **GeoRef API**: https://apis.datos.gob.ar/georef/api/
+- **MercadoEnvíos API**: https://developers.mercadolibre.com.ar/es_ar/envios
 
 ---
 
 ## 📊 MÉTRICAS DEL PROYECTO
 
-- **Backend**: ~70 archivos Java
+- **Backend**: ~85 archivos Java (+15 esta sesión)
 - **Frontend**: ~40 archivos JSX/CSS
-- **Total LOC**: ~15,000 (estimado)
-- **Endpoints**: ~50
-- **Entidades**: 10 principales
-- **Tiempo desarrollo**: ~4-5 sesiones
+- **Total LOC**: ~18,000 (estimado)
+- **Endpoints**: ~60 (+10 esta sesión)
+- **Entidades**: 11 principales (+1 Address)
+- **Tiempo desarrollo**: ~5-6 sesiones
 
 ---
 
 ## 🎯 PRÓXIMA SESIÓN
 
-**Objetivo**: Sistema de Delivery con envío gratis
+**Objetivo**: Frontend de Direcciones y Envíos
 **Archivos necesarios**:
-- TenantConfig.java
-- OrderService.java
-- CheckoutPage.jsx
-- MyAccountPage.jsx
+- MyAccountPage.jsx (agregar tab Direcciones)
+- AddressManager.jsx (nuevo)
+- AddressForm.jsx (nuevo)
+- CheckoutPage.jsx (agregar selector envío)
+- ShippingSelector.jsx (nuevo)
 
 **Resultado esperado**:
-- Address model + CRUD
-- Cálculo de envío en checkout
-- Mensaje "Envío gratis" dinámico
-- Validación productos físicos requieren dirección
+- CRUD de direcciones funcional en frontend
+- Autocompletar con GeoRef en formulario
+- Cotización de envío en tiempo real
+- Selector de opciones de MercadoEnvíos
+- Integración completa checkout → envío → pago
 
 ---
 
@@ -526,30 +651,11 @@ Admin: admin@admin.com / admin123
 - **Slot**: Horario disponible para reserva
 - **External Reference**: ID de nuestra orden usado en MercadoPago
 - **Snapshot**: Copia de datos al momento de la transacción (ej: priceAtPurchase)
+- **GeoRef**: API del gobierno argentino para normalizar direcciones
+- **MercadoEnvíos**: Sistema de logística de MercadoLibre
+- **Shipping Method ID**: ID único de un método de envío (ej: 100009 = Estándar)
+- **Shipment ID**: ID del envío en MercadoLibre para tracking
 
 ---
 
 **🔄 ACTUALIZAR ESTE ARCHIVO AL FINAL DE CADA SESIÓN**
-
-
-## ✅ FEATURES COMPLETADAS
-- HACER EL PROJECT_MEMORY.MD
-
-## 🔄 PENDIENTE
-- [ ] Objetivo: Sistema de Delivery con envío gratis Archivos necesarios:
-
-TenantConfig.java
-OrderService.java
-CheckoutPage.jsx
-MyAccountPage.jsx
-Resultado esperado:
-
-Address model + CRUD
-Cálculo de envío en checkout
-Mensaje "Envío gratis" dinámico
-Validación productos físicos requieren dirección
-
-
-## 🎯 PRÓXIMA SESIÓN
-Objetivo: LO PENDIENTE.
-

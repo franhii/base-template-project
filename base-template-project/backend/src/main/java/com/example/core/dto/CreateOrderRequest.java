@@ -17,6 +17,15 @@ public class CreateOrderRequest {
 
     private String notes;
 
+    private Boolean isDelivery;
+
+    private String deliveryAddressId;
+
+    private String deliveryNotes;
+
+    // Nuevo para MercadoEnvíos
+    private Long shippingMethodId; // El cliente elige cuál opción (estándar, express, etc.)
+
     @Data
     public static class OrderItemRequest {
         @NotNull
