@@ -471,7 +471,7 @@ ShippingSelector → Selector de opciones de envío (pendiente frontend)
 - **Chat anteriores**:
     - https://claude.ai/chat/f73e801d-c1ea-45ee-8a89-e517c03886ee (Sesión 1)
     - https://claude.ai/chat/f052be26-377a-40ee-a877-08cfae28a7b3 (Sesión 2)
-    - [SESIÓN_ACTUAL_2025-11-12] (Sesión 3 - Backend Direcciones + MercadoEnvíos)
+    - https://claude.ai/chat/34892749-e9fd-4463-b8af-a25605b78d5c (Sesion 3)
 - **Repo Git**: https://github.com/franhii/base-template-project
 - **Docs MP**: https://www.mercadopago.com.ar/developers/es/docs
 - **GeoRef API**: https://apis.datos.gob.ar/georef/api/
