@@ -12,7 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class ShippingQuoteResponse {
-    private List<ShippingOptionDTO> options;
-    private String originPostalCode;
-    private String destinationPostalCode;
+    List<ShippingOptionDTO> options;
+    String originPostalCode;
+    String destinationPostalCode;
 }

@@ -138,40 +138,74 @@ export default function CartPage() {
                         ))}
                     </div>
 
+                    <div className="cart-sidebar">
+                        {/* ⭐ NUEVO: Preview de envío */}
+                        <ShippingPreview
+                            cartTotal={subtotal}
+                            onShippingSelect={handleShippingSelect}
+                        />
                     {/* Summary */}
-                    <div className="cart-summary">
-                        <h2>Resumen</h2>
+                        <div className="cart-summary">
+                            <h2>Resumen</h2>
 
-                        <div className="summary-row">
-                            <span>Subtotal</span>
-                            <span>${subtotal.toFixed(2)}</span>
+                            <div className="summary-row">
+                                <span>Subtotal</span>
+                                <span>${subtotal.toFixed(2)}</span>
+                            </div>
+
+                            <div className="summary-row">
+                                <span>IVA (21%)</span>
+                                <span>${tax.toFixed(2)}</span>
+                            </div>
+
+                            <div className="summary-divider"></div>
+
+                            <div className="summary-row summary-total">
+                                <span>Total</span>
+                                <span>${total.toFixed(2)}</span>
+                            </div>
+
+                            {estimatedShipping && (
+                                <div className="summary-row shipping-row">
+                                <span>
+                                  Envío ({estimatedShipping.name})
+                                  <span className="estimated-label">estimado</span>
+                                </span>
+                                                <span className={estimatedShipping.isFree ? 'free-text' : ''}>
+                                  {estimatedShipping.isFree ? 'GRATIS' : `$${estimatedShipping.cost.toFixed(2)}`}
+                                </span>
+                                </div>
+                            )}
+
+                            <div className="summary-divider" />
+
+                            <div className="summary-row total">
+                                <span>Total {estimatedShipping ? 'Estimado' : ''}</span>
+                                <span>
+                                    ${(subtotal + (estimatedShipping?.cost || 0)).toFixed(2)}
+                                </span>
+                            </div>
+
+                            {estimatedShipping && (
+                                <p className="shipping-disclaimer">
+                                    El costo final de envío se confirmará en el checkout
+                                </p>
+                            )}
+
+                            <button
+                                onClick={() => navigate('/checkout')}
+                                className="btn-checkout"
+                            >
+                                Proceder al Pago
+                            </button>
+
+                            <button
+                                onClick={() => navigate('/')}
+                                className="btn-continue-shopping"
+                            >
+                                Continuar Comprando
+                            </button>
                         </div>
-
-                        <div className="summary-row">
-                            <span>IVA (21%)</span>
-                            <span>${tax.toFixed(2)}</span>
-                        </div>
-
-                        <div className="summary-divider"></div>
-
-                        <div className="summary-row summary-total">
-                            <span>Total</span>
-                            <span>${total.toFixed(2)}</span>
-                        </div>
-
-                        <button
-                            onClick={() => navigate('/checkout')}
-                            className="btn-checkout"
-                        >
-                            Proceder al Pago
-                        </button>
-
-                        <button
-                            onClick={() => navigate('/')}
-                            className="btn-continue-shopping"
-                        >
-                            Continuar Comprando
-                        </button>
                     </div>
                 </div>
             </div>

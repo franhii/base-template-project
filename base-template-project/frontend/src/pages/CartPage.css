@@ -300,6 +300,54 @@
     border-color: #cbd5e1;
 }
 
+
+/* ... estilos existentes de CartPage.css ... */
+
+/* Nuevos estilos para shipping en el summary */
+
+.summary-row.shipping-row {
+    color: #3b82f6;
+    font-size: 14px;
+}
+
+.estimated-label {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 6px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.shipping-disclaimer {
+    font-size: 12px;
+    color: #6b7280;
+    text-align: center;
+    margin: 8px 0 16px 0;
+    font-style: italic;
+}
+
+.free-text {
+    color: #10b981;
+    font-weight: 700;
+}
+
+/* Ajustes al layout para el sidebar */
+.cart-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .shipping-disclaimer {
+        font-size: 11px;
+    }
+}
+
 /* ========== Responsive ========== */
 @media (max-width: 1024px) {
     .cart-content {

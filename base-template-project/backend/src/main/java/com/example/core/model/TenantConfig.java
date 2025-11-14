@@ -40,6 +40,19 @@ public class TenantConfig {
     // ========== Traducciones custom (i18n) ==========
     private Map<String, String> translations;
 
+
+    // Se agrega para saber el costo (deesde donde esta el local hasta el destino del cliente)
+    private String postalCode;
+
+    // Getter y Setter
+    public String getPostalCode() {
+        return postalCode;
+    }
+
+    public void setPostalCode(String postalCode) {
+        this.postalCode = postalCode;
+    }
+
     // ========== Clase para Redes Sociales ==========
     @Data
     public static class SocialMedia {
