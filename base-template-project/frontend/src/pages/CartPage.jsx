@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../store/CartContext';
 import ConfirmModal from '../components/ConfirmModal';
+import Toast from '../components/Toast';
+import ShippingPreview from './ShippingPreview';
 import './CartPage.css';
 
 export default function CartPage() {
@@ -9,6 +11,7 @@ export default function CartPage() {
     const { cart, removeFromCart, updateQuantity, getTotal, clearCart } = useCart();
     const [confirmClear, setConfirmClear] = useState(false);
     const [toast, setToast] = useState(null);
+    const [estimatedShipping, setEstimatedShipping] = useState(null);
 
     const updateQuantityHandler = (itemId, newQuantity) => {
         if (newQuantity <= 0) {
@@ -27,24 +30,19 @@ export default function CartPage() {
         setTimeout(() => setToast(null), 3000);
     };
 
-    const showToast = (message, type) => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
-    };
-
-    const handleAddToCart = () => {
-        addToCart(product, 1);
-        showToast('Producto agregado al carrito', 'success');
+    const handleShippingSelect = (shippingOption) => {
+        setEstimatedShipping(shippingOption);
     };
 
     const getTotals = () => {
         const subtotal = getTotal();
         const tax = subtotal * 0.21; // IVA 21%
-        const total = subtotal + tax;
-        return { subtotal, tax, total };
+        const shippingCost = estimatedShipping ? estimatedShipping.cost : 0;
+        const total = subtotal + tax + shippingCost;
+        return { subtotal, tax, shippingCost, total };
     };
 
-    const { subtotal, tax, total } = getTotals();
+    const { subtotal, tax, shippingCost, total } = getTotals();
 
     if (cart.length === 0) {
         return (
@@ -138,13 +136,15 @@ export default function CartPage() {
                         ))}
                     </div>
 
+                    {/* Sidebar con Preview de Envío + Summary */}
                     <div className="cart-sidebar">
-                        {/* ⭐ NUEVO: Preview de envío */}
+                        {/* Preview de envío */}
                         <ShippingPreview
                             cartTotal={subtotal}
                             onShippingSelect={handleShippingSelect}
                         />
-                    {/* Summary */}
+
+                        {/* Summary */}
                         <div className="cart-summary">
                             <h2>Resumen</h2>
 
@@ -158,32 +158,23 @@ export default function CartPage() {
                                 <span>${tax.toFixed(2)}</span>
                             </div>
 
-                            <div className="summary-divider"></div>
-
-                            <div className="summary-row summary-total">
-                                <span>Total</span>
-                                <span>${total.toFixed(2)}</span>
-                            </div>
-
                             {estimatedShipping && (
                                 <div className="summary-row shipping-row">
-                                <span>
-                                  Envío ({estimatedShipping.name})
-                                  <span className="estimated-label">estimado</span>
-                                </span>
-                                                <span className={estimatedShipping.isFree ? 'free-text' : ''}>
-                                  {estimatedShipping.isFree ? 'GRATIS' : `$${estimatedShipping.cost.toFixed(2)}`}
-                                </span>
+                                    <span>
+                                        Envío ({estimatedShipping.name})
+                                        <span className="estimated-label">estimado</span>
+                                    </span>
+                                    <span className={estimatedShipping.isFree ? 'free-text' : ''}>
+                                        {estimatedShipping.isFree ? 'GRATIS' : `$${estimatedShipping.cost.toFixed(2)}`}
+                                    </span>
                                 </div>
                             )}
 
-                            <div className="summary-divider" />
+                            <div className="summary-divider"></div>
 
-                            <div className="summary-row total">
+                            <div className="summary-row summary-total">
                                 <span>Total {estimatedShipping ? 'Estimado' : ''}</span>
-                                <span>
-                                    ${(subtotal + (estimatedShipping?.cost || 0)).toFixed(2)}
-                                </span>
+                                <span>${total.toFixed(2)}</span>
                             </div>
 
                             {estimatedShipping && (

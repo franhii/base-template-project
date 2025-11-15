@@ -1,6 +1,6 @@
 # PROJECT_MEMORY.md
 > **PROPÓSITO**: Contexto técnico completo para Claude. Actualizar al final de cada sesión.
-> **ÚLTIMA ACTUALIZACIÓN**: 2025-11-12
+> **ÚLTIMA ACTUALIZACIÓN**: 2025-11-15
 
 ---
 
@@ -8,7 +8,7 @@
 
 ### Stack
 **Backend**: Spring Boot 3.2.0 + Java 21 + PostgreSQL + Maven
-**Frontend**: React 18 + Vite + Axios + Context API
+**Frontend**: React 18 + Vite + Axios + Context API + CSS Vanilla
 **Integraciones**: MercadoPago SDK 2.1.26 + GeoRef API + MercadoEnvíos
 
 ### Arquitectura Multi-Tenant
@@ -54,7 +54,7 @@ class TenantConfig {
 }
 ```
 
-### Address (NUEVO - Sistema de Direcciones)
+### Address
 ```java
 @Entity class Address {
   String id;
@@ -101,7 +101,7 @@ abstract class Item {
 }
 ```
 
-### Order (ACTUALIZADO - Con Shipping)
+### Order
 ```java
 @Entity class Order {
   String id;
@@ -113,7 +113,7 @@ abstract class Item {
   PaymentMethod paymentMethod;
   String notes;
   
-  // ========== SHIPPING (NUEVO) ==========
+  // ========== SHIPPING ==========
   Address deliveryAddress; // @ManyToOne (null si es pickup)
   BigDecimal deliveryCost; // Costo del envío (de MercadoEnvíos)
   boolean isDelivery; // true = delivery, false = pickup
@@ -123,9 +123,6 @@ abstract class Item {
   String shippingStatus; // pending, ready_to_ship, shipped, delivered
   
   LocalDateTime createdAt, updatedAt;
-  
-  // Método helper
-  BigDecimal getTotalWithDelivery(); // total + deliveryCost
 }
 
 @Entity class OrderItem {
@@ -193,24 +190,23 @@ abstract class Item {
 ### SecurityConfig
 - **CORS**: Habilitado para localhost:5173, incluye X-Tenant-Subdomain
 - **CSRF**: Disabled (JWT stateless)
-- **Public endpoints**: /api/auth/**, /api/config/current, /api/items/** (GET), /api/payments/** (webhooks), /api/georef/**
+- **Public endpoints**: /api/auth/**, /api/config/current, /api/items/** (GET), /api/payments/webhook/**, /api/georef/**, /api/shipping/**
 
 ---
 
 ## 🌐 BACKEND: ENDPOINTS PRINCIPALES
 
-### Auth (/api/auth)
-- `POST /register` → Crea User + rol CLIENTE + tenant default
-- `POST /login` → Retorna JWT
-- `GET /me` → User actual (requiere auth)
+### Shipping (/api/shipping) - MercadoEnvíos
+- `POST /quote-by-postalcode` → Cotizar con CP (4 dígitos)
+   - Body: `{ postalCode: "2600", orderTotal: 15000 }`
+   - Retorna: `[{ shippingMethodId, name, cost, estimatedDelivery, carrier, isFree }]`
+   - Validaciones: CP del tenant en config, formato 4 dígitos
 
-### Items (/api/items)
-- `GET /products` → Lista productos del tenant actual
-- `GET /services` → Lista servicios del tenant actual
-- `POST /products` → Crea producto (ADMIN/VENDEDOR)
-- `POST /services` → Crea servicio (ADMIN/VENDEDOR)
+- `POST /quote` → Cotizar con addressId
+   - Body: `{ addressId: "uuid", orderTotal: 15000 }`
+   - Usa CP de la dirección seleccionada
 
-### Addresses (/api/addresses) - NUEVO
+### Addresses (/api/addresses)
 - `POST /` → Crear dirección (con GeoRef)
 - `GET /` → Listar mis direcciones
 - `GET /default` → Obtener dirección por defecto
@@ -219,259 +215,249 @@ abstract class Item {
 - `PATCH /{id}/set-default` → Marcar como default
 - `DELETE /{id}` → Eliminar dirección
 
-### GeoRef (/api/georef) - NUEVO (Público)
+### GeoRef (/api/georef) - Público
 - `GET /provinces` → Todas las provincias argentinas
 - `GET /municipalities?provinceId=X` → Municipios por provincia
 - `GET /municipalities/search?query=X` → Buscar municipios (autocomplete)
 - `GET /localities?municipalityId=X` → Localidades por municipio
 
-### Shipping (/api/shipping) - NUEVO (MercadoEnvíos)
-- `POST /quote` → Cotizar opciones de envío
-   - Body: `{ addressId, orderTotal, dimensions? }`
-   - Retorna opciones de MercadoEnvíos con precios
-- `GET /available/{addressId}` → Validar disponibilidad de envío
-
 ### Orders (/api/orders)
 - `POST /` → Crea orden + reserva stock + crea bookings + calcula envío
+   - Body incluye: `isDelivery, deliveryAddressId?, shippingMethodId?, deliveryNotes?`
    - Validación automática de shipping si isDelivery=true
-   - Integración con MercadoEnvíos
 - `GET /my-orders` → Órdenes del user
 - `GET /` → Todas las órdenes del tenant (ADMIN/VENDEDOR)
 - `POST /{id}/cancel` → Cancela orden + restaura stock
 
-### Payments (/api/payments)
-- `POST /` → Crea pago (MP o manual)
-- `POST /upload-receipt` → Sube comprobante (transferencias)
-- `PATCH /{id}/approve` → Aprueba pago manual (ADMIN/VENDEDOR)
-- `PATCH /{id}/reject` → Rechaza pago + restaura stock
-- `POST /webhook/mercadopago` → Webhook de MP (público)
-- `GET /success, /failure, /pending` → Redirects de MP
-
-### Bookings (/api/bookings)
-- `GET /available?serviceId=X&date=Y` → Slots disponibles
-- `POST /` → Crea booking (status PENDING hasta pago)
-- `POST /{id}/cancel` → Cancela booking (24hs antes mínimo)
-- `GET /my-bookings` → Bookings del user
-
-### Admin (/api/admin)
-- `GET /users` → Todos los usuarios
-- `POST /users` → Crea usuario con tenant específico
-- `PATCH /users/{id}/role` → Cambia rol
-
-### Admin Stats (/api/admin/stats)
-- `GET /dashboard` → KPIs (ventas, órdenes, clientes, revenue)
-- `GET /daily-sales?days=30` → Ventas diarias (chart)
-- `GET /pending-payments` → Pagos pendientes revisión
-- `GET /top-products?limit=10` → Productos más vendidos
-- `GET /payment-methods` → Distribución métodos de pago
-- `GET /order-status` → Distribución estados órdenes
-
-### Customer (/api/customer)
-- `GET /profile` → Perfil del user
-- `PUT /profile` → Actualiza perfil (nombre, teléfono)
-- `GET /orders` → Mis órdenes
-- `GET /bookings` → Mis reservas
-- `GET /bookings/upcoming` → Próximas reservas
-- `POST /bookings/{id}/cancel` → Cancela reserva (24hs antes)
-- `GET /stats` → Estadísticas del cliente
-
-### Super Admin (/api/super-admin)
-- `GET /tenants` → TODOS los tenants (sin filtro)
-- `POST /tenants` → Crea tenant
-- `PUT /tenants/{id}` → Actualiza tenant
-- `PATCH /tenants/{id}/toggle-status` → Activa/Suspende tenant
-- `PATCH /tenants/{id}/features` → Actualiza features del tenant
-- `POST /services` → Crea servicio para un tenant específico
-
-### Config (/api/config)
-- `GET /current` → Configuración del tenant actual (público)
+### Payments, Bookings, Auth, Items... (resto igual)
 
 ---
 
 ## 🎨 FRONTEND: ESTRUCTURA
 
-### Context & State
+### Servicios API (services/api.js)
 ```javascript
-// CartContext: cart, addToCart, removeFromCart, updateQuantity, clearCart, getTotal, getTotalItems
-// Persistencia en localStorage
-// Validación de stock en addToCart/updateQuantity
+// api.js: axios instance con JWT interceptor + tenant header
+// BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:8080'
+
+// Interceptor request: Agrega Authorization Bearer token
+// Interceptor response: 401 → localStorage.removeItem('token')
+
+// Servicios exportados:
+authService: { register, login, getCurrentUser }
+itemService: { getProducts, getServices, createProduct, createService }
+tenantService: { getCurrentConfig }
+
+// Helper multi-tenancy:
+setTenantHeader(subdomain) // Setea X-Tenant-Subdomain
 ```
 
-### Páginas
+### Context & State
+```javascript
+// CartContext (store/CartContext.jsx)
+cart: Array<{id, name, price, quantity, stock?, bookingDate?, bookingTime?}>
+
+Métodos:
+- addToCart(item, qty) → valida stock
+- removeFromCart(id)
+- updateQuantity(id, qty) → valida stock
+- clearCart()
+- getTotal() → sum(price * quantity)
+- getTotalItems() → sum(quantity)
+
+Persistencia: localStorage auto-save/load
 ```
-HomePage → Lista productos/servicios (tabs)
+
+### Páginas Principales
+```
+HomePage → Tabs (Todo/Productos/Servicios) + Grid de cards
+CartPage → Items + Summary (subtotal + IVA 21% + total)
+CheckoutPage → Método pago + (PENDIENTE: ShippingSelector)
+MyAccountPage → Tabs: Overview, Órdenes, Reservas, Perfil (PENDIENTE: Direcciones)
+AdminPage → <AdminDashboard /> (KPIs + Recharts + Pending payments)
+ManageItemsPage → CRUD productos/servicios (tabs)
+SuperAdminPage → Tabla tenants + CRUD
+SuperAdminServiceCreationPage → Crear servicio para tenant específico
 LoginPage / RegisterPage
-CartPage → Lista items + summary + validaciones stock
-CheckoutPage → Selector método pago + dirección + envío → Crea orden + pago → Redirige a MP o success
-SuccessPage / FailurePage / PendingPage → Resultados MP
-AdminPage → Dashboard (Recharts) + Pending payments table
-ManageItemsPage → CRUD productos/servicios (tabs) + booking config
-MyAccountPage → Tabs: Overview (stats), Órdenes, Reservas, Perfil, Direcciones (NUEVO)
-SuperAdminPage → Tabla tenants + Edit/Suspend + Crear servicio
+SuccessPage / FailurePage / PendingPage (MP callbacks)
 NotFoundPage
 ```
 
-### Componentes
+### Componentes Críticos
 ```
-Navbar → Logo, links, carrito badge, user dropdown, roles
-ProductCard / ServiceCard → Imagen, precio, stock, agregar carrito
+Navbar → Logo dinámico, cart badge, links por rol
+ProductCard / ServiceCard → Validación stock, badges
 BookingModal → Selector fecha + slots disponibles
-Toast → Notificaciones (success, error, warning)
-ConfirmModal → Confirmaciones (cancelar booking, vaciar carrito, etc.)
-EditTenantModal → Editar tenant (nombre, tipo, features)
-AdminDashboard → KPIs + charts (Recharts)
-AddressManager → CRUD direcciones (pendiente frontend)
-AddressForm → Formulario con GeoRef autocomplete (pendiente frontend)
-ShippingSelector → Selector de opciones de envío (pendiente frontend)
+Toast → Notificaciones (4 tipos)
+ConfirmModal → Confirmaciones
+AdminDashboard → Recharts (LineChart, PieChart, BarChart)
+EditTenantModal
 ```
 
-### Servicios API
-```javascript
-// api.js: axios instance con JWT interceptor + tenant header
-// authService: register, login, getCurrentUser
-// itemService: getProducts, getServices, createProduct, createService
-// tenantService: getCurrentConfig
-// addressService: CRUD direcciones (pendiente)
-// shippingService: quoteShipping (pendiente)
-// setTenantHeader(subdomain) → Para testing multi-tenant
+### Componentes CSS (IMPORTANTE - No modificar estructura)
+```
+Todos los componentes usan CSS Vanilla con clases propias
+NO usar Tailwind ni cambiar nombres de clases existentes
+Mantener estructura de divs original
+Grid layouts con display: grid y auto-fit/auto-fill
+Responsive con @media queries
 ```
 
 ---
 
 ## 🔄 FLUJOS CRÍTICOS
----
 
-## 🔄 PENDIENTE (TODO.md - Priorizado)
+### Compra con Envío (En Desarrollo)
+```
+1. HomePage → Agregar productos al carrito
+2. CartPage → Revisar items
+   └─ NUEVO: ShippingPreview (cotización preliminar por CP)
+3. CheckoutPage
+   ├─ Selector delivery/pickup
+   ├─ Si delivery: Selector de dirección
+   ├─ POST /api/shipping/quote-by-postalcode
+   ├─ Mostrar opciones de envío con precios
+   └─ Calcular totalWithShipping
+4. POST /api/orders (incluye shippingMethodId, addressId)
+5. POST /api/payments
+6. Redirect a MercadoPago o success
+```
 
-### 🔥 Prioridad Alta (Siguiente Sesión - 2025-11-13)
-
-**OBJETIVO**: Completar frontend de Direcciones y Envío
-
-1. **AddressForm.jsx** (NUEVO)
-    - [ ] Modal/Form con campos de dirección
-    - [ ] Integración con GeoRef API (provinces, municipalities, localities)
-    - [ ] Autocompletado en cascada (Provincia → Municipio → Localidad)
-    - [ ] Validación CP 4 dígitos
-    - [ ] Checkbox "Marcar como default"
-    - [ ] Modos: create/edit
-
-2. **AddressManager.jsx** (NUEVO)
-    - [ ] Listar direcciones del usuario
-    - [ ] Card por dirección con badge "Default"
-    - [ ] Botones: Editar, Eliminar, Set Default
-    - [ ] Botón "Agregar Dirección" → Abre AddressForm
-    - [ ] Empty state si no hay direcciones
-    - [ ] ConfirmModal para eliminación
-
-3. **ShippingSelector.jsx** (NUEVO)
-    - [ ] Radio: "Retiro en local" / "Envío a domicilio"
-    - [ ] Si delivery: Selector de dirección existente
-    - [ ] Botón "Agregar nueva dirección"
-    - [ ] POST /api/shipping/quote al seleccionar dirección
-    - [ ] Mostrar opciones MercadoEnvíos con precios
-    - [ ] Badge "GRATIS" si cost = 0
-    - [ ] Radio buttons para elegir opción de envío
-    - [ ] Actualizar total del checkout
-
-4. **MyAccountPage.jsx** (MODIFICAR)
-    - [ ] Agregar tab "📍 Direcciones"
-    - [ ] Renderizar <AddressManager /> en el tab
-
-5. **CheckoutPage.jsx** (MODIFICAR)
-    - [ ] Agregar estados: deliveryType, selectedAddress, shippingOptions, selectedShipping, deliveryCost
-    - [ ] Integrar <ShippingSelector />
-    - [ ] Calcular totalWithShipping
-    - [ ] Enviar isDelivery, deliveryAddressId, shippingMethodId en orderData
-
-6. **Testing E2E**
-    - [ ] Flujo: Crear dirección → Cotizar envío → Comprar con delivery
-    - [ ] Flujo: Retiro en local (sin envío)
-    - [ ] Validar que Order se cree con shipping data
-    - [ ] Verificar total incluye deliveryCost
-
-### 📋 Prioridad Media
-
-7. **Tracking de Envíos** (Futuro)
-    - [ ] Crear shipment en MercadoEnvíos post-pago
-    - [ ] Guardar shipmentId en Order
-    - [ ] Endpoint GET /api/orders/{id}/tracking
-    - [ ] Frontend: Mostrar estado de envío en "Mis Órdenes"
-
-8. **WhatsApp Floating Button**
-    - [ ] Botón flotante esquina inferior derecha
-    - [ ] Número configurable en TenantConfig
-    - [ ] Link directo wa.me
-
-9. **Google OAuth Login**
-    - [ ] Login con Google
-    - [ ] Auto-registro si no existe
-    - [ ] Mantener JWT existente
-
-### 🔧 Refactoring & Performance
-- [ ] Agregar soft-delete a entidades críticas
-- [ ] Cache configuración tenants (Redis)
-- [ ] Índices BD para performance (Address por user/tenant)
-- [ ] Rate limiting endpoints públicos
-- [ ] Logging estructurado (SLF4J)
-
-### 🐛 Bugs Conocidos
-- [ ] Validar webhooks MP en producción (ngrok → dominio real)
-- [ ] Manejo de timezones en bookings
-- [ ] Validar emails únicos por tenant
+### Reserva de Servicio con Booking
+```
+1. HomePage → ServiceCard (requiresBooking)
+2. Click "Reservar" → BookingModal
+3. Seleccionar fecha → GET /api/bookings/available
+4. Seleccionar slot → addToCart con bookingDate/Time
+5. CartPage → Checkout normal
+6. Pago aprobado → Booking.status = CONFIRMED
+```
 
 ---
 
-## 📝 DECISIONES TÉCNICAS IMPORTANTES
+## 🔄 PENDIENTE (Priorizado)
 
-### ¿Por qué GeoRef API en lugar de campos libres?
-- API oficial del gobierno argentino (gratis, datos actualizados)
-- IDs oficiales de provincias/municipios
-- Mejor UX con autocomplete
-- Preparado para validaciones de CP
+### 🔥 PRIORIDAD 1 - Frontend Shipping (AHORA)
 
-### ¿Por qué MercadoEnvíos en lugar de Andreani/OCA directo?
-- **No requiere contrato corporativo** (solo API key)
+**CONTEXTO**: Backend de shipping YA está implementado. Necesitamos frontend.
+
+**COMPONENTES A CREAR**:
+
+1. **ShippingPreview.jsx** (CartPage) ✅ CREADO PERO REVISAR
+   - Input código postal (4 dígitos)
+   - Botón "Calcular envío"
+   - POST /api/shipping/quote-by-postalcode
+   - Mostrar opciones: nombre, costo, tiempo estimado, courier
+   - Radio buttons para seleccionar
+   - Badge "GRATIS" si isFree
+   - Nota: "Costo final se confirma en checkout"
+   - **PROBLEMA ACTUAL**: Cambios en estructura CSS/divs
+
+2. **ShippingSelector.jsx** (CheckoutPage) - PENDIENTE
+   - Radio: "Retiro en local" / "Envío a domicilio"
+   - Si delivery:
+      * Selector de dirección (GET /api/addresses)
+      * Botón "Agregar dirección" (futuro AddressForm)
+      * POST /api/shipping/quote al seleccionar dirección
+      * Mostrar opciones MercadoEnvíos
+      * Radio para elegir método
+   - Actualizar estado: deliveryType, selectedAddress, shippingMethod, deliveryCost
+
+3. **CartPage.jsx** - MODIFICAR
+   - Integrar <ShippingPreview /> en sidebar
+   - Mostrar costo estimado en summary (si hay)
+   - Nota aclaratoria sobre estimación
+
+4. **CheckoutPage.jsx** - MODIFICAR
+   - Integrar <ShippingSelector />
+   - Estados: isDelivery, deliveryAddressId, shippingMethodId, deliveryCost
+   - Calcular totalWithShipping
+   - Enviar datos shipping en POST /api/orders
+
+**ARCHIVOS EXISTENTES A REVISAR**:
+- `ShippingPreview.jsx` ✅ Existe
+- `ShippingPreview.css` ✅ Existe
+- `CartPage.jsx` ⚠️ Verificar integración
+- `CartPage.css` ⚠️ Verificar que no se rompió estructura
+
+**TESTING**:
+- [ ] Flujo: Calcular envío en cart → Ver opciones → Continuar checkout
+- [ ] Flujo: Checkout con retiro en local
+- [ ] Flujo: Checkout con delivery (cuando AddressManager esté listo)
+
+---
+
+### 🔥 PRIORIDAD 2 - Frontend Direcciones
+
+**AddressManager.jsx** - PENDIENTE
+- Listar direcciones (GET /api/addresses)
+- Cards con badge "Default"
+- Botones: Editar, Eliminar, Set Default
+- Empty state
+- ConfirmModal para delete
+
+**AddressForm.jsx** - PENDIENTE
+- Modal con campos street, streetNumber, apartment, reference
+- Autocompletado GeoRef:
+   * Provincias (GET /api/georef/provinces)
+   * Municipios (GET /api/georef/municipalities?provinceId=X)
+   * Localidades (GET /api/georef/localities?municipalityId=X)
+- Input CP (4 dígitos)
+- Checkbox isDefault
+- POST /api/addresses o PUT /api/addresses/{id}
+
+**MyAccountPage.jsx** - MODIFICAR
+- Agregar tab "📍 Direcciones"
+- Renderizar <AddressManager />
+
+---
+
+### 📋 PRIORIDAD 3 - Mejoras
+
+- Tracking de envíos (shipmentId en Order)
+- WhatsApp floating button
+- Google OAuth
+- Soft-delete entities
+- Cache config tenants
+- Rate limiting
+- Logging estructurado
+
+---
+
+## 📝 DECISIONES TÉCNICAS CLAVE
+
+### ¿Por qué ShippingPreview en CartPage?
+- **UX**: Usuario ve costo estimado ANTES de checkout
+- **Conversión**: Reduce abandono (transparencia de costos)
+- **Limitación**: Solo cotiza por CP (no requiere dirección completa aún)
+
+### ¿Por qué separar ShippingPreview y ShippingSelector?
+- **ShippingPreview** (Cart): Estimación rápida, solo CP
+- **ShippingSelector** (Checkout): Selección final con dirección completa
+- Evita UX confuso (dos lugares haciendo lo mismo)
+
+### ¿Por qué no modificar estructura CSS existente?
+- **Estabilidad**: Componentes ya funcionales y testeados
+- **Responsive**: Media queries ya ajustadas
+- **Consistencia**: Diseño unificado en toda la app
+- **Tiempo**: Evita refactorings innecesarios
+
+### ¿Por qué MercadoEnvíos?
+- No requiere contrato corporativo
 - Mismas credenciales que MercadoPago
-- Mejores tarifas (economías de escala)
+- Múltiples couriers (Correo Argentino + Andreani)
 - Tracking incluido
-- Múltiples couriers en uno (Correo Argentino + Andreani)
-- Puntos de retiro en todo el país
-- Confianza del usuario
-
-### ¿Por qué separar street y streetNumber?
-- Requerimiento de couriers (necesitan separados)
-- Mejor búsqueda y filtrado
-- Validaciones más precisas
-- Compatibilidad con APIs de mapas
-
-### ¿Por qué ThreadLocal para TenantContext?
-- Aislamiento automático por request
-- No contamina parámetros de métodos
-- Compatible con transacciones Spring
-
-### ¿Por qué snapshot en OrderItem?
-- Preserva datos si se elimina Item
-- Auditabilidad (precio al momento de compra)
-- Evita inconsistencias en reportes históricos
-
-### ¿Por qué JSONB para TenantConfig?
-- Flexibilidad para configs custom por tenant
-- No requiere migraciones para agregar campos
-- PostgreSQL indexa JSONB eficientemente
-
-### ¿Por qué external_reference en MP en lugar de payment_id?
-- MP puede reintentar pagos con mismo payment_id
-- external_reference es nuestro Order.id (único)
-- Evita duplicados y facilita tracking
+- Tarifas competitivas
 
 ---
 
 ## 🔗 LINKS IMPORTANTES
 
 - **Chat anteriores**:
-    - https://claude.ai/chat/f73e801d-c1ea-45ee-8a89-e517c03886ee (Sesión 1)
-    - https://claude.ai/chat/f052be26-377a-40ee-a877-08cfae28a7b3 (Sesión 2)
-    - https://claude.ai/chat/34892749-e9fd-4463-b8af-a25605b78d5c (Sesion 3)
+   - https://claude.ai/chat/f73e801d-c1ea-45ee-8a89-e517c03886ee (Sesión 1)
+   - https://claude.ai/chat/f052be26-377a-40ee-a877-08cfae28a7b3 (Sesión 2)
+   - https://claude.ai/chat/34892749-e9fd-4463-b8af-a25605b78d5c (Sesión 3)
+   - https://claude.ai/chat/a20c1ea9-e0b5-4552-a346-2a7f57a43937 (Sesion 4)
 - **Repo Git**: https://github.com/franhii/base-template-project
 - **Docs MP**: https://www.mercadopago.com.ar/developers/es/docs
 - **GeoRef API**: https://apis.datos.gob.ar/georef/api/
@@ -479,51 +465,22 @@ ShippingSelector → Selector de opciones de envío (pendiente frontend)
 
 ---
 
-## 📊 MÉTRICAS DEL PROYECTO
+## 🎯 PRÓXIMA ACCIÓN INMEDIATA
 
-- **Backend**: ~100 archivos Java
-- **Frontend**: ~45 archivos JSX/CSS (estimado con nuevos componentes)
-- **Total LOC**: ~20,000 (estimado)
-- **Endpoints**: ~70
-- **Entidades**: 12 principales
-- **Tiempo desarrollo**: 3 sesiones intensivas
+**OBJETIVO**: Revisar y corregir ShippingPreview.jsx + Integración en CartPage
 
----
+**PASOS**:
+1. Revisar ShippingPreview.jsx (verificar estructura original)
+2. Revisar CartPage.jsx (verificar integración correcta)
+3. Testear flujo de cotización
+4. Si funciona → Continuar con ShippingSelector.jsx
+5. Si hay problemas → Corregir manteniendo CSS original
 
-## 🎯 PRÓXIMA SESIÓN (2025-11-13)
-
-**Objetivo**: Frontend completo de Direcciones y Envío
-**Archivos a crear**:
-- AddressForm.jsx + CSS
-- AddressManager.jsx + CSS
-- ShippingSelector.jsx + CSS
-
-**Archivos a modificar**:
-- MyAccountPage.jsx (agregar tab)
-- CheckoutPage.jsx (integrar shipping)
-
-**Resultado esperado**:
-- Usuario puede gestionar direcciones en "Mi Cuenta"
-- Checkout con selector de envío funcional
-- Cotización en tiempo real con MercadoEnvíos
-- Compra completa con delivery/pickup
-- Testing E2E exitoso del flujo
-
----
-
-## 📖 GLOSARIO
-
-- **Tenant**: Cliente/negocio que usa la plataforma
-- **Item**: Abstracción de Product + ServiceItem
-- **Booking**: Reserva de un servicio en fecha/hora específica
-- **OrderItem**: Línea de una orden (puede incluir booking data)
-- **Slot**: Horario disponible para reserva
-- **External Reference**: ID de nuestra orden usado en MercadoPago
-- **Snapshot**: Copia de datos al momento de la transacción (ej: priceAtPurchase)
-- **GeoRef**: API del gobierno argentino para normalizar direcciones
-- **MercadoEnvíos**: Sistema de logística de MercadoLibre
-- **Shipping Method ID**: ID único de un método de envío (ej: 100009 = Estándar)
-- **Shipment ID**: ID del envío en MercadoLibre para tracking
+**ARCHIVOS A REVISAR**:
+- `/frontend/src/pages/ShippingPreview.jsx`
+- `/frontend/src/pages/ShippingPreview.css`
+- `/frontend/src/pages/CartPage.jsx`
+- `/frontend/src/pages/CartPage.css`
 
 ---
 

@@ -2,6 +2,9 @@ package com.example.core.service;
 
 
 import com.example.core.dto.*;
+import com.example.core.dto.GeoRefProvincesResponse;
+import com.example.core.dto.GeoRefMunicipalitiesResponse;
+import com.example.core.dto.GeoRefLocalitiesResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -41,15 +44,22 @@ public class GeoRefService {
                     .queryParam("max", "24") // Argentina tiene 23 provincias + CABA
                     .toUriString();
 
-            ResponseEntity<GeoRefResponse<GeoRefProvince>> response = restTemplate.exchange(
+            // DEBUG: Ver JSON crudo
+            ResponseEntity<String> debugResponse = restTemplate.getForEntity(url, String.class);
+            log.info("=== DEBUG GeoRef API ===");
+            log.info("URL: {}", url);
+            log.info("JSON crudo: {}", debugResponse.getBody());
+            log.info("========================");
+
+            ResponseEntity<GeoRefProvincesResponse> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
                     null,
-                    new ParameterizedTypeReference<GeoRefResponse<GeoRefProvince>>() {}
+                    new ParameterizedTypeReference<GeoRefProvincesResponse>() {}
             );
-
-            if (response.getBody() != null && response.getBody().getResultados() != null) {
-                return response.getBody().getResultados().stream()
+            log.info("ResponseGeoRef{}",response.getBody());
+            if (response.getBody() != null && response.getBody().getProvincias() != null) {
+                return response.getBody().getProvincias().stream()
                         .map(p -> new ProvinceDTO(p.getId(), p.getNombre()))
                         .collect(Collectors.toList());
             }
@@ -77,15 +87,22 @@ public class GeoRefService {
                     .queryParam("max", "500")
                     .toUriString();
 
-            ResponseEntity<GeoRefResponse<GeoRefMunicipality>> response = restTemplate.exchange(
+            // DEBUG: Ver JSON crudo para municipios
+            ResponseEntity<String> debugResponse = restTemplate.getForEntity(url, String.class);
+            log.info("=== DEBUG MUNICIPIOS API ===");
+            log.info("URL: {}", url);
+            log.info("JSON crudo: {}", debugResponse.getBody());
+            log.info("========================");
+
+            ResponseEntity<GeoRefMunicipalitiesResponse> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
                     null,
-                    new ParameterizedTypeReference<GeoRefResponse<GeoRefMunicipality>>() {}
+                    new ParameterizedTypeReference<GeoRefMunicipalitiesResponse>() {}
             );
 
-            if (response.getBody() != null && response.getBody().getResultados() != null) {
-                return response.getBody().getResultados().stream()
+            if (response.getBody() != null && response.getBody().getMunicipios() != null) {
+                return response.getBody().getMunicipios().stream()
                         .map(m -> new MunicipalityDTO(
                                 m.getId(),
                                 m.getNombre(),
@@ -118,15 +135,22 @@ public class GeoRefService {
                     .queryParam("max", "500")
                     .toUriString();
 
-            ResponseEntity<GeoRefResponse<GeoRefLocality>> response = restTemplate.exchange(
+            // DEBUG: Ver JSON crudo para localidades
+            ResponseEntity<String> debugResponse = restTemplate.getForEntity(url, String.class);
+            log.info("=== DEBUG LOCALIDADES API ===");
+            log.info("URL: {}", url);
+            log.info("JSON crudo localidades: {}", debugResponse.getBody());
+            log.info("========================");
+
+            ResponseEntity<GeoRefLocalitiesResponse> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
                     null,
-                    new ParameterizedTypeReference<GeoRefResponse<GeoRefLocality>>() {}
+                    new ParameterizedTypeReference<GeoRefLocalitiesResponse>() {}
             );
 
-            if (response.getBody() != null && response.getBody().getResultados() != null) {
-                return response.getBody().getResultados().stream()
+            if (response.getBody() != null && response.getBody().getLocalidades() != null) {
+                return response.getBody().getLocalidades().stream()
                         .map(l -> new LocalityDTO(
                                 l.getId(),
                                 l.getNombre(),
@@ -165,15 +189,15 @@ public class GeoRefService {
                     .queryParam("max", "20")
                     .toUriString();
 
-            ResponseEntity<GeoRefResponse<GeoRefMunicipality>> response = restTemplate.exchange(
+            ResponseEntity<GeoRefMunicipalitiesResponse> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
                     null,
-                    new ParameterizedTypeReference<GeoRefResponse<GeoRefMunicipality>>() {}
+                    new ParameterizedTypeReference<GeoRefMunicipalitiesResponse>() {}
             );
 
-            if (response.getBody() != null && response.getBody().getResultados() != null) {
-                return response.getBody().getResultados().stream()
+            if (response.getBody() != null && response.getBody().getMunicipios() != null) {
+                return response.getBody().getMunicipios().stream()
                         .map(m -> new MunicipalityDTO(
                                 m.getId(),
                                 m.getNombre(),

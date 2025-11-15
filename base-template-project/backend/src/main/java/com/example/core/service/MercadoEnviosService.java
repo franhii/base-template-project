@@ -38,7 +38,9 @@ public class MercadoEnviosService {
      */
     public ShippingQuoteResponse calculateShipping(ShippingCalculationRequest request) {
         try {
-            String url = ML_API_BASE_URL + "/shipments/calculate";
+            // Según documentación: https://developers.mercadolibre.com.ar/es_ar/envios
+            // Endpoint para cotizar costos de envío
+            String url = ML_API_BASE_URL + "/sites/MLA/shipping_costs";
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -47,6 +49,8 @@ public class MercadoEnviosService {
             HttpEntity<ShippingCalculationRequest> entity = new HttpEntity<>(request, headers);
 
             log.info("Cotizando envío ML: {} → {}", request.getZipCodeFrom(), request.getZipCodeTo());
+            log.info("URL: {}", url);
+            log.info("Request body: {}", request);
 
             ResponseEntity<MercadoLibreShippingResponse> response = restTemplate.exchange(
                     url,
@@ -143,5 +147,75 @@ public class MercadoEnviosService {
         // GET /shipments/{shipmentId}
         log.info("Obtener tracking de shipment {}", shipmentId);
         return null;
+    }
+
+    // ========== DEBUG: INVESTIGAR CPs VÁLIDOS ==========
+
+    /**
+     * Investigar métodos de shipping disponibles y códigos postales válidos
+     * Usa el endpoint correcto de la documentación oficial
+     */
+    public void investigateValidPostalCodes() {
+        String[] knownPostalCodes = {
+            "1000", // CABA Centro
+            "1001", // CABA Monserrat  
+            "1426", // CABA Belgrano
+            "2600", // Venado Tuerto, Santa Fe
+            "7600", // Mar del Plata, Buenos Aires
+            "5000", // Córdoba Capital
+            "4000", // San Miguel de Tucumán
+            "3000", // Santa Fe Capital
+            "8300", // Neuquén Capital
+            "9120", // Puerto Madryn, Chubut
+            "1900", // La Plata, Buenos Aires
+            "2000", // Rosario, Santa Fe
+            "5500", // Mendoza Capital
+            "4400", // Salta Capital
+        };
+
+        String baseZip = "1000"; // CABA como origen base
+
+        log.info("=== INVESTIGANDO MÉTODOS DE SHIPPING EN MERCADOENVÍOS ===");
+        log.info("🔑 Token configurado: {}", accessToken != null ? "✅ SÍ" : "❌ NO");
+        log.info("🔑 Token length: {}", accessToken != null ? accessToken.length() : 0);
+        
+        // Primero obtenemos los métodos de shipping disponibles
+        String methodsUrl = ML_API_BASE_URL + "/sites/MLA/shipping_methods";
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+        
+        try {
+            log.info("🔍 Consultando métodos de shipping disponibles...");
+            ResponseEntity<String> methodsResponse = restTemplate.exchange(
+                methodsUrl,
+                HttpMethod.GET, 
+                entity,
+                String.class
+            );
+            
+            log.info("📦 Métodos de shipping disponibles: {}", methodsResponse.getBody());
+            
+        } catch (Exception e) {
+            log.error("❌ Error al consultar métodos de shipping", e);
+        }
+
+        for (String postalCode : knownPostalCodes) {
+            try {
+                boolean available = isShippingAvailable(baseZip, postalCode);
+                log.info("CP {} - {}", postalCode, available ? "✅ VÁLIDO" : "❌ INVÁLIDO");
+                
+                // Pausa para no saturar la API
+                Thread.sleep(500);
+                
+            } catch (Exception e) {
+                log.error("Error probando CP {}: {}", postalCode, e.getMessage());
+            }
+        }
+        
+        log.info("=== FIN INVESTIGACIÓN CPs ===");
     }
 }

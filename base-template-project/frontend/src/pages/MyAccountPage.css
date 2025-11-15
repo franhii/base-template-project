@@ -510,4 +510,51 @@
         flex-direction: column;
         gap: 10px;
     }
+
+    .account-tabs .tab {
+        font-size: 0.9rem;
+        padding: 12px 16px;
+    }
+}
+
+/* ========== ADDRESSES SECTION ========== */
+.addresses-section {
+    padding: 0;
+    margin-top: 0;
+}
+
+/* Override address manager styles to match account page theme */
+.addresses-section .address-manager {
+    background: transparent;
+    padding: 0;
+}
+
+.addresses-section .address-manager-header h3 {
+    color: var(--primary-color);
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.addresses-section .address-card {
+    background: white;
+    border: 1px solid #e8ecef;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.addresses-section .address-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 16px rgba(52, 152, 219, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Ensure modal appears above everything */
+.modal-overlay {
+    z-index: 9999;
+}
+
+.modal-content.address-form {
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
 }

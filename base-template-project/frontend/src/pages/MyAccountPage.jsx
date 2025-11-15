@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
+import AddressManager from '../components/AddressManager';
 import './MyAccountPage.css';
 
 export default function MyAccountPage() {
@@ -137,6 +138,12 @@ export default function MyAccountPage() {
                     onClick={() => setActiveTab('bookings')}
                 >
                     📅 Mis Reservas
+                </button>
+                <button
+                    className={`tab ${activeTab === 'addresses' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('addresses')}
+                >
+                    📍 Direcciones
                 </button>
                 <button
                     className={`tab ${activeTab === 'profile' ? 'active' : ''}`}
@@ -294,6 +301,13 @@ export default function MyAccountPage() {
                                 ))}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* Addresses Tab */}
+                {activeTab === 'addresses' && (
+                    <div className="addresses-section">
+                        <AddressManager />
                     </div>
                 )}
 

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { AlertCircle, Truck, Clock, CheckCircle } from 'lucide-react';
 import './ShippingPreview.css';
 
 const ShippingPreview = ({ cartTotal, onShippingSelect }) => {
@@ -80,7 +79,7 @@ const ShippingPreview = ({ cartTotal, onShippingSelect }) => {
     return (
         <div className="shipping-preview">
             <div className="shipping-preview-header">
-                <Truck className="icon" />
+                <i className="fas fa-truck icon"></i>
                 <h3>Calcular Envío</h3>
             </div>
 
@@ -104,7 +103,7 @@ const ShippingPreview = ({ cartTotal, onShippingSelect }) => {
 
             {error && (
                 <div className="shipping-error">
-                    <AlertCircle size={16} />
+                    <i className="fas fa-exclamation-triangle"></i>
                     <span>{error}</span>
                 </div>
             )}
@@ -124,7 +123,7 @@ const ShippingPreview = ({ cartTotal, onShippingSelect }) => {
                         >
                             <div className="option-radio">
                                 {selectedOption?.shippingMethodId === option.shippingMethodId && (
-                                    <CheckCircle size={20} className="check-icon" />
+                                    <i className="fas fa-check-circle check-icon"></i>
                                 )}
                             </div>
 
@@ -134,7 +133,7 @@ const ShippingPreview = ({ cartTotal, onShippingSelect }) => {
                                     {option.isFree && <span className="free-badge">GRATIS</span>}
                                 </div>
                                 <div className="option-delivery">
-                                    <Clock size={14} />
+                                    <i className="fas fa-clock"></i>
                                     <span>{option.estimatedDelivery}</span>
                                 </div>
                                 {option.carrier && (
@@ -153,7 +152,7 @@ const ShippingPreview = ({ cartTotal, onShippingSelect }) => {
                     ))}
 
                     <div className="shipping-note">
-                        <AlertCircle size={14} />
+                        <i className="fas fa-info-circle"></i>
                         <span>El costo final se confirmará en el checkout con tu dirección completa</span>
                     </div>
                 </div>

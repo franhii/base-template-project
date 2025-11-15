@@ -3,6 +3,7 @@ package com.example.core.controller;
 import com.example.core.dto.ShippingQuoteRequest;
 import com.example.core.dto.ShippingQuoteResponse;
 import com.example.core.service.ShippingService;
+import com.example.core.service.MercadoEnviosService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ import java.math.BigDecimal;
 public class ShippingController {
 
     private final ShippingService shippingService;
+    private final MercadoEnviosService mercadoEnviosService;
 
     /**
      * Cotizar envío solo con CP de DESTINO (público - para preview en carrito)
@@ -56,5 +58,25 @@ public class ShippingController {
     public ResponseEntity<Boolean> isShippingAvailable(@PathVariable String addressId) {
         boolean available = shippingService.isShippingAvailable(addressId);
         return ResponseEntity.ok(available);
+    }
+
+    // ========== DEBUG TEMPORAL ==========
+    
+    /**
+     * Endpoint temporal para investigar códigos postales válidos en MercadoEnvíos
+     * TODO: Remover después de la investigación
+     * GET /api/shipping/debug/investigate-postal-codes
+     */
+    @GetMapping("/debug/investigate-postal-codes")
+    public ResponseEntity<String> investigatePostalCodes() {
+        try {
+            log.info("🔍 Iniciando investigación de códigos postales válidos...");
+            mercadoEnviosService.investigateValidPostalCodes();
+            return ResponseEntity.ok("✅ Investigación completada. Revisar logs del servidor para resultados.");
+        } catch (Exception e) {
+            log.error("❌ Error en investigación de CPs", e);
+            return ResponseEntity.badRequest()
+                .body("❌ Error: " + e.getMessage());
+        }
     }
 }
